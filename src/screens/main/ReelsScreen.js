@@ -14,6 +14,7 @@ import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../components/Avatar';
 import { CommentsModal } from '../../components/CommentsModal';
+import { FeedVideoPlayer } from '../../components/FeedVideoPlayer';
 import { getFeedPosts, toggleLike } from '../../api/post';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -84,7 +85,15 @@ export const ReelsScreen = ({ navigation }) => {
 
     return (
       <View style={[styles.reelContainer, { height: height - 52 - insets.bottom }]}>
-        <Image source={{ uri: item.mediaUrl }} style={styles.backgroundImage} resizeMode="cover" />
+        {item.mediaType === 'video' || item.isReel || (item.mediaUrl && item.mediaUrl.match(/\.(mp4|mov|webm|mkv)/i)) ? (
+          <FeedVideoPlayer
+            sourceUrl={item.mediaUrl}
+            style={styles.backgroundImage}
+            showMuteButton={true}
+          />
+        ) : (
+          <Image source={{ uri: item.mediaUrl }} style={styles.backgroundImage} resizeMode="cover" />
+        )}
         <View style={styles.dimOverlay} />
 
         {/* Right Side Action Buttons */}

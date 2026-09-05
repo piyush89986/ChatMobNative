@@ -67,7 +67,13 @@ export const ChatListItem = ({
     } else if (lastMsg.message === '❤️') {
       lastMsgPreview = `${prefix}❤️ Liked`;
     } else if (lastMsg.message) {
-      lastMsgPreview = `${prefix}${lastMsg.message}`;
+      if (lastMsg.message.match(/\.(jpeg|jpg|png|gif|webp)$/i)) {
+        lastMsgPreview = `${prefix}📷 Photo`;
+      } else if (lastMsg.message.match(/\.(mp4|mov|webm|mkv)$/i)) {
+        lastMsgPreview = `${prefix}🎥 Video`;
+      } else {
+        lastMsgPreview = `${prefix}${lastMsg.message}`;
+      }
     }
   }
 

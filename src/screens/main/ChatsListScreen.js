@@ -103,11 +103,12 @@ export const ChatsListScreen = ({ navigation }) => {
   acceptedChats.forEach((chat) => {
     if (!chat.isGroupChat && chat.members) {
       const other = chat.members.find((m) => (m._id || m) !== user?._id);
-      if (other && !seenUserIds.has(other._id)) {
+      if (other && !seenUserIds.has(other._id) && other.note && other.note.trim()) {
         seenUserIds.add(other._id);
         noteContacts.push({
           user: other,
           chatId: chat._id,
+          note: other.note,
           isOnline: isUserOnline(other._id),
         });
       }
@@ -196,7 +197,7 @@ export const ChatsListScreen = ({ navigation }) => {
             <Text style={styles.noteSubtitle}>📍 Location off</Text>
           </TouchableOpacity>
 
-          {/* Dynamic contacts from real database chats */}
+          {/* Dynamic contacts with active notes from real database chats */}
           {noteContacts.map((contact) => (
             <TouchableOpacity
               key={contact.user._id}
@@ -210,6 +211,11 @@ export const ChatsListScreen = ({ navigation }) => {
               }
             >
               <View style={styles.noteAvatarWrapper}>
+                <View style={styles.noteSpeechBubble}>
+                  <Text style={styles.noteSpeechText} numberOfLines={2}>
+                    {contact.note}
+                  </Text>
+                </View>
                 <Avatar
                   uri={contact.user.avatar}
                   name={contact.user.user_name}

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from './Avatar';
+import { FeedVideoPlayer } from './FeedVideoPlayer';
 import { COLORS } from '../theme/colors';
 
 const { width } = Dimensions.get('window');
@@ -119,11 +120,18 @@ export const PostCard = ({
         onPress={handleDoubleTap}
         style={styles.imageContainer}
       >
-        <Image
-          source={{ uri: post.mediaUrl }}
-          style={styles.postImage}
-          resizeMode="cover"
-        />
+        {post.mediaType === 'video' || post.isReel || (post.mediaUrl && post.mediaUrl.match(/\.(mp4|mov|webm|mkv)/i)) ? (
+          <FeedVideoPlayer
+            sourceUrl={post.mediaUrl}
+            style={styles.postImage}
+          />
+        ) : (
+          <Image
+            source={{ uri: post.mediaUrl }}
+            style={styles.postImage}
+            resizeMode="cover"
+          />
+        )}
 
         {/* Bursting Heart Animation on Double Tap */}
         <Animated.View

@@ -9,6 +9,8 @@ import { CreateGroupScreen } from '../screens/main/CreateGroupScreen';
 import { ChatsListScreen } from '../screens/main/ChatsListScreen';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
 
+import { Platform } from 'react-native';
+
 const Stack = createNativeStackNavigator();
 
 export const MainNavigator = () => {
@@ -16,8 +18,9 @@ export const MainNavigator = () => {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        animation: 'slide_from_right',
+        animation: Platform.OS === 'android' ? 'fade' : 'slide_from_right',
         contentStyle: { backgroundColor: '#000000' },
+        detachPreviousScreen: false,
       }}
     >
       <Stack.Screen name="BottomTabs" component={BottomTabNavigator} />

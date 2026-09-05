@@ -9,6 +9,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -162,7 +163,7 @@ export const ProfileScreen = ({ navigation, route }) => {
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.headerIconBtn}
-            onPress={() => Alert.alert('Threads', 'Threads connected')}
+            onPress={() => {}}
           >
             <Ionicons name="at-outline" size={25} color="#FFFFFF" />
           </TouchableOpacity>
@@ -253,7 +254,7 @@ export const ProfileScreen = ({ navigation, route }) => {
 
             <TouchableOpacity
               style={styles.actionBtn}
-              onPress={() => Alert.alert('Share Profile', `fomo.app/${user?.user_name}`)}
+              onPress={() => Share.share({ message: `Check out my FOMO profile: https://fomo.app/${user?.user_name}` }).catch(() => {})}
               activeOpacity={0.7}
             >
               <Text style={styles.actionBtnText}>Share profile</Text>
@@ -271,7 +272,8 @@ export const ProfileScreen = ({ navigation, route }) => {
           <View style={styles.actionsRow}>
             <TouchableOpacity
               style={[styles.actionBtn, styles.followBtn]}
-              onPress={() => Alert.alert('Followed', `You followed ${user?.user_name}`)}
+              onPress={() => {}}
+              activeOpacity={0.8}
             >
               <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Follow</Text>
             </TouchableOpacity>
@@ -323,7 +325,7 @@ export const ProfileScreen = ({ navigation, route }) => {
             style={[styles.gridTab, activeTab === 'reels' && styles.gridTabActive]}
             onPress={() => setActiveTab('reels')}
           >
-            <Ionicons name="play-box-outline" size={24} color={activeTab === 'reels' ? '#FFFFFF' : '#737373'} />
+            <Ionicons name="videocam-outline" size={24} color={activeTab === 'reels' ? '#FFFFFF' : '#737373'} />
           </TouchableOpacity>
 
           <TouchableOpacity
