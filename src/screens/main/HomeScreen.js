@@ -281,7 +281,10 @@ export const HomeScreen = ({ navigation }) => {
               colors={['#0095F6']}
             />
           }
-          contentContainerStyle={styles.feedContent}
+          contentContainerStyle={[
+            styles.feedContent,
+            posts.length === 0 && styles.feedContentEmpty,
+          ]}
         />
       )}
 
@@ -365,6 +368,10 @@ const styles = StyleSheet.create({
   feedContent: {
     paddingBottom: 24,
   },
+  feedContentEmpty: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   storiesContainer: {
     paddingVertical: 10,
     borderBottomWidth: 0.5,
@@ -403,37 +410,54 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 70,
   },
-  emptyFeedBox: {
-    paddingTop: 80,
+  emptyFeedContainer: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 32,
+    paddingVertical: 60,
+  },
+  emptyIconCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 2,
+    borderColor: '#262626',
+    backgroundColor: '#121212',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   emptyFeedTitle: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 16,
+    fontSize: 21,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: -0.4,
   },
   emptyFeedSubtitle: {
-    color: '#737373',
+    color: '#8E8E8E',
     fontSize: 13.5,
     textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 19,
+    marginTop: 8,
+    lineHeight: 20,
+    maxWidth: 290,
   },
   emptyCreateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#0095F6',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginTop: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 22,
+    alignSelf: 'center',
   },
   emptyCreateBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 14.5,
     fontWeight: '700',
   },
 });
