@@ -1,10 +1,12 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ChatsListScreen } from '../screens/main/ChatsListScreen';
+import { BottomTabNavigator } from './BottomTabNavigator';
 import { ChatDetailScreen } from '../screens/main/ChatDetailScreen';
+import { CreatePostScreen } from '../screens/main/CreatePostScreen';
+import { NotificationsScreen } from '../screens/main/NotificationsScreen';
 import { SearchUsersScreen } from '../screens/main/SearchUsersScreen';
 import { CreateGroupScreen } from '../screens/main/CreateGroupScreen';
-import { ProfileScreen } from '../screens/main/ProfileScreen';
+import { ChatsListScreen } from '../screens/main/ChatsListScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -16,11 +18,13 @@ export const MainNavigator = () => {
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="ChatsList" component={ChatsListScreen} />
+      <Stack.Screen name="BottomTabs" component={BottomTabNavigator} />
       <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
+      <Stack.Screen name="DirectMessages" component={ChatsListScreen} />
+      <Stack.Screen name="CreatePost" component={CreatePostScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="SearchUsers" component={SearchUsersScreen} />
       <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
-      <Stack.Screen name="Profile" component={ProfileScreen} />
     </Stack.Navigator>
   );
 };

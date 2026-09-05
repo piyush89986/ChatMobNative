@@ -113,22 +113,34 @@ export const ChatsListScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       {/* 1. Instagram Direct Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.accountSelector}
-          onPress={() => navigation.navigate('Profile')}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.headerUsername} numberOfLines={1}>
-            {user?.user_name || 'Direct'}
-          </Text>
-          <Ionicons name="chevron-down" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
-          <View
-            style={[
-              styles.connectionDot,
-              { backgroundColor: isConnected ? COLORS.online : COLORS.error },
-            ]}
-          />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {navigation.canGoBack() && (
+            <TouchableOpacity
+              style={{ marginRight: 10, padding: 4 }}
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.accountSelector}
+            onPress={() => navigation.navigate('Profile')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.headerUsername} numberOfLines={1}>
+              {user?.user_name || 'Direct'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
+            <View
+              style={[
+                styles.connectionDot,
+                { backgroundColor: isConnected ? COLORS.online : COLORS.error },
+              ]}
+            />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.headerActions}>
           <TouchableOpacity

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,29 +8,60 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
+  Dimensions,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { Avatar } from '../../components/Avatar';
 import { CustomInput } from '../../components/CustomInput';
 import { ServerConfigModal } from '../../components/ServerConfigModal';
 import { updateProfile, uploadAvatar } from '../../api/user';
+import { getUserPosts } from '../../api/post';
 import * as ImagePicker from 'expo-image-picker';
 
-export const ProfileScreen = ({ navigation }) => {
-  const { user, logout, updateProfileData, serverUrl } = useAuth();
+const { width } = Dimensions.get('window');
+const GRID_ITEM_SIZE = width / 3 - 1.5;
+
+export const ProfileScreen = ({ navigation, route }) => {
+  const { user: authUser, logout, updateProfileData, serverUrl } = useAuth();
+  const targetUser = route.params?.targetUser;
+  const isOwnProfile = !targetUser || targetUser._id === authUser?._id;
+  const user = isOwnProfile ? authUser : targetUser;
+
   const [editing, setEditing] = useState(false);
   const [userName, setUserName] = useState(user?.user_name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [bio, setBio] = useState(user?.bio || '');
-  const [address, setAddress] = useState(user?.address || '');
-  const [gender, setGender] = useState(user?.gender || 'other');
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showServerModal, setShowServerModal] = useState(false);
 
+  // Tab: 'grid' | 'reels' | 'reposts' | 'tagged'
+  const [activeTab, setActiveTab] = useState('grid');
+  const [userPosts, setUserPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      if (!user?._id) return;
+      try {
+        const res = await getUserPosts(user._id);
+        if (res && res.data) {
+          setUserPosts(res.data);
+        }
+      } catch (e) {
+        console.log('Error fetching user posts:', e.message);
+      } finally {
+        setLoadingPosts(false);
+      }
+    };
+
+    fetchPosts();
+  }, [user?._id]);
+
   const handlePickAvatar = async () => {
+    if (!isOwnProfile) return;
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -75,8 +106,6 @@ export const ProfileScreen = ({ navigation }) => {
         user_name: userName.trim(),
         email: email.trim(),
         bio: bio.trim(),
-        address: address.trim(),
-        gender,
       });
 
       if (res && res.data) {
@@ -92,210 +121,223 @@ export const ProfileScreen = ({ navigation }) => {
   };
 
   const handleLogout = () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out of Direct?', [
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log Out',
-        style: 'destructive',
-        onPress: () => logout(),
-      },
+      { text: 'Log Out', style: 'destructive', onPress: () => logout() },
     ]);
   };
 
   return (
     <SafeAreaView style={styles.safeContainer}>
-      {/* Instagram Profile Top Header */}
+      {/* 1. Header matching Screenshot Image 5 */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{user?.user_name || 'Profile'}</Text>
-        <TouchableOpacity
-          style={styles.headerRightBtn}
-          onPress={() => setEditing(!editing)}
-        >
-          <Text style={styles.headerRightText}>{editing ? 'Cancel' : 'Edit'}</Text>
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <Ionicons name="lock-closed" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+          <Text style={styles.headerUsername} numberOfLines={1}>
+            {user?.user_name || 'Profile'}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
+        </View>
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => navigation.navigate('CreatePost')}
+          >
+            <Ionicons name="add-circle-outline" size={26} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => setShowServerModal(true)}
+          >
+            <Ionicons name="menu-outline" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Instagram Profile Header Info */}
+        {/* 2. Top Profile Stats Section */}
         <View style={styles.profileTopSection}>
-          <View style={styles.avatarWrapper}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handlePickAvatar}
+            style={styles.avatarWrapper}
+          >
             <Avatar
               uri={user?.avatar}
               name={user?.user_name}
-              size={86}
-              showStoryRing={true}
+              size={84}
+              showStoryRing={false}
             />
-            {uploadingAvatar ? (
-              <View style={styles.avatarLoadingOverlay}>
+            {isOwnProfile && (
+              <View style={styles.avatarPlusBadge}>
+                <Ionicons name="add" size={14} color="#FFFFFF" />
+              </View>
+            )}
+            {uploadingAvatar && (
+              <View style={styles.avatarLoader}>
                 <ActivityIndicator size="small" color="#FFFFFF" />
               </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.cameraBadge}
-                onPress={handlePickAvatar}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="camera" size={14} color="#FFFFFF" />
-              </TouchableOpacity>
             )}
-          </View>
+          </TouchableOpacity>
 
-          {/* Stats Counters */}
+          {/* Stats */}
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>1</Text>
-              <Text style={styles.statLabel}>account</Text>
+              <Text style={styles.statNumber}>{userPosts.length}</Text>
+              <Text style={styles.statLabel}>posts</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>Active</Text>
-              <Text style={styles.statLabel}>status</Text>
+              <Text style={styles.statNumber}>397</Text>
+              <Text style={styles.statLabel}>followers</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>Direct</Text>
-              <Text style={styles.statLabel}>chat</Text>
+              <Text style={styles.statNumber}>306</Text>
+              <Text style={styles.statLabel}>following</Text>
             </View>
           </View>
         </View>
 
-        {/* User Bio Details */}
-        <View style={styles.bioContainer}>
-          <Text style={styles.displayName}>{user?.user_name}</Text>
-          <Text style={styles.userEmail}>{user?.email}</Text>
-          <Text style={styles.userBioText}>
-            {user?.bio ? user.bio : 'Hey there! I am using Instagram Direct.'}
-          </Text>
+        {/* 3. Bio & Details */}
+        <View style={styles.bioSection}>
+          <Text style={styles.fullName}>{user?.user_name}</Text>
+          <Text style={styles.roleText}>{user?.role || 'Direct Member'}</Text>
+          <Text style={styles.bioText}>{user?.bio || 'Living the dream ✨'}</Text>
         </View>
 
-        {/* Instagram Action Buttons: Edit Profile & Share Profile */}
-        <View style={styles.actionButtonsRow}>
+        {/* 4. Action Buttons (Edit profile, Share profile) */}
+        {isOwnProfile ? (
+          <View style={styles.actionsRow}>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => setEditing(!editing)}
+            >
+              <Text style={styles.actionBtnText}>{editing ? 'Cancel' : 'Edit profile'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => Alert.alert('Share Profile', `instagram.com/${user?.user_name}`)}
+            >
+              <Text style={styles.actionBtnText}>Share profile</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionIconPill}
+              onPress={() => navigation.navigate('SearchUsers')}
+            >
+              <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.actionsRow}>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.followBtn]}
+              onPress={() => Alert.alert('Followed', `You followed ${user?.user_name}`)}
+            >
+              <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Follow</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => navigation.navigate('ChatDetail', { recipient: user })}
+            >
+              <Text style={styles.actionBtnText}>Message</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Edit Form if toggle */}
+        {editing && (
+          <View style={styles.editForm}>
+            <CustomInput label="Username" value={userName} onChangeText={setUserName} iconName="person-outline" />
+            <CustomInput label="Email" value={email} onChangeText={setEmail} iconName="mail-outline" autoCapitalize="none" />
+            <CustomInput label="Bio" value={bio} onChangeText={setBio} iconName="chatbubble-outline" multiline />
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile} disabled={saving}>
+              {saving ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.saveBtnText}>Save</Text>}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* 5. Story Highlights Tray */}
+        <View style={styles.highlightsContainer}>
+          <View style={styles.highlightItem}>
+            <TouchableOpacity
+              style={styles.highlightPlusCircle}
+              onPress={() => navigation.navigate('CreatePost')}
+            >
+              <Ionicons name="add" size={28} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.highlightLabel}>New</Text>
+          </View>
+        </View>
+
+        {/* 6. Grid Navigation Tabs */}
+        <View style={styles.gridTabs}>
           <TouchableOpacity
-            style={styles.actionPillBtn}
-            onPress={() => setEditing(!editing)}
+            style={[styles.gridTab, activeTab === 'grid' && styles.gridTabActive]}
+            onPress={() => setActiveTab('grid')}
           >
-            <Text style={styles.actionPillBtnText}>Edit Profile</Text>
+            <Ionicons name="grid" size={22} color={activeTab === 'grid' ? '#FFFFFF' : '#737373'} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionPillBtn}
-            onPress={() => Alert.alert('Share Profile', `Share link for @${user?.user_name}`)}
+            style={[styles.gridTab, activeTab === 'reels' && styles.gridTabActive]}
+            onPress={() => setActiveTab('reels')}
           >
-            <Text style={styles.actionPillBtnText}>Share Profile</Text>
+            <Ionicons name="play-box-outline" size={24} color={activeTab === 'reels' ? '#FFFFFF' : '#737373'} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.gridTab, activeTab === 'reposts' && styles.gridTabActive]}
+            onPress={() => setActiveTab('reposts')}
+          >
+            <Ionicons name="repeat-outline" size={24} color={activeTab === 'reposts' ? '#FFFFFF' : '#737373'} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.gridTab, activeTab === 'tagged' && styles.gridTabActive]}
+            onPress={() => setActiveTab('tagged')}
+          >
+            <Ionicons name="person-circle-outline" size={24} color={activeTab === 'tagged' ? '#FFFFFF' : '#737373'} />
           </TouchableOpacity>
         </View>
 
-        {/* Profile Details or Edit Form */}
-        <View style={styles.cardSection}>
-          {editing ? (
-            <View style={styles.formContainer}>
-              <CustomInput
-                label="Username"
-                value={userName}
-                onChangeText={setUserName}
-                iconName="person-outline"
-              />
-              <CustomInput
-                label="Email"
-                value={email}
-                onChangeText={setEmail}
-                iconName="mail-outline"
-                autoCapitalize="none"
-              />
-              <CustomInput
-                label="Bio"
-                value={bio}
-                onChangeText={setBio}
-                iconName="chatbubble-outline"
-                multiline
-                numberOfLines={2}
-              />
-              <CustomInput
-                label="Address"
-                value={address}
-                onChangeText={setAddress}
-                iconName="location-outline"
-              />
-
-              <TouchableOpacity
-                style={[styles.saveBtn, saving && styles.btnDisabled]}
-                onPress={handleSaveProfile}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.saveBtnText}>Save Changes</Text>
-                )}
+        {/* 7. Posts 3-Column Grid */}
+        {loadingPosts ? (
+          <View style={styles.centerLoader}>
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          </View>
+        ) : userPosts.length > 0 ? (
+          <View style={styles.postsGrid}>
+            {userPosts.map((post) => (
+              <TouchableOpacity key={post._id} style={styles.gridImageWrapper} activeOpacity={0.8}>
+                <Image source={{ uri: post.mediaUrl }} style={styles.gridImage} resizeMode="cover" />
               </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          /* Empty Posts State matching Image 5 */
+          <View style={styles.emptyGridContainer}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="camera-outline" size={48} color="#FFFFFF" />
             </View>
-          ) : (
-            <View style={styles.infoList}>
-              <View style={styles.infoRow}>
-                <Ionicons name="call-outline" size={20} color="#0095F6" />
-                <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoLabel}>Phone Number</Text>
-                  <Text style={styles.infoValue}>{user?.phone || 'Not specified'}</Text>
-                </View>
-              </View>
+            <Text style={styles.emptyGridTitle}>No posts yet</Text>
+            <Text style={styles.emptyGridSubtitle}>
+              When you share photos and videos, they will appear on your profile.
+            </Text>
+            <TouchableOpacity
+              style={styles.shareFirstBtn}
+              onPress={() => navigation.navigate('CreatePost')}
+            >
+              <Text style={styles.shareFirstBtnText}>Share your first photo</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-              <View style={styles.infoRow}>
-                <Ionicons name="location-outline" size={20} color="#0095F6" />
-                <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoLabel}>Location</Text>
-                  <Text style={styles.infoValue}>{user?.address || 'Not specified'}</Text>
-                </View>
-              </View>
-
-              <View style={styles.infoRow}>
-                <Ionicons name="male-female-outline" size={20} color="#0095F6" />
-                <View style={styles.infoTextContainer}>
-                  <Text style={styles.infoLabel}>Gender</Text>
-                  <Text style={styles.infoValue}>{user?.gender || 'Not specified'}</Text>
-                </View>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* Advanced Settings & Logout */}
-        <View style={styles.settingsSection}>
-          <Text style={styles.sectionHeaderTitle}>SETTINGS</Text>
-
-          <TouchableOpacity
-            style={styles.settingRow}
-            onPress={() => setShowServerModal(true)}
-          >
-            <View style={styles.settingIconContainer}>
-              <Ionicons name="server-outline" size={18} color="#A8A8A8" />
-            </View>
-            <View style={styles.settingTextContainer}>
-              <Text style={styles.settingTitle}>Backend Server</Text>
-              <Text style={styles.settingSubtitle} numberOfLines={1}>
-                {serverUrl.replace(/^https?:\/\//, '')}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#737373" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.settingRow, styles.logoutRow]}
-            onPress={handleLogout}
-          >
-            <View style={[styles.settingIconContainer, { backgroundColor: 'rgba(237, 73, 86, 0.15)' }]}>
-              <Ionicons name="log-out-outline" size={18} color="#ED4956" />
-            </View>
-            <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingTitle, { color: '#ED4956' }]}>Log Out</Text>
-              <Text style={styles.settingSubtitle}>Sign out from this device</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+        {/* Log Out option */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Log Out of Direct</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       <ServerConfigModal
@@ -316,27 +358,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#000000',
+    paddingVertical: 10,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#262626',
+    borderBottomColor: '#1A1A1A',
   },
-  backBtn: {
-    padding: 4,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+  headerUsername: {
     color: '#FFFFFF',
-    letterSpacing: -0.2,
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    maxWidth: 220,
   },
-  headerRightBtn: {
-    padding: 4,
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
-  headerRightText: {
-    color: '#0095F6',
-    fontSize: 14,
-    fontWeight: '700',
+  headerIconBtn: {
+    padding: 2,
   },
   scrollContent: {
     paddingBottom: 40,
@@ -351,185 +394,216 @@ const styles = StyleSheet.create({
   avatarWrapper: {
     position: 'relative',
   },
-  avatarLoadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 43,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cameraBadge: {
+  avatarPlusBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
     backgroundColor: '#0095F6',
-    borderRadius: 14,
-    width: 26,
-    height: 26,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#000000',
   },
+  avatarLoader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 42,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   statsContainer: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginLeft: 20,
+    marginLeft: 16,
   },
   statItem: {
     alignItems: 'center',
   },
   statNumber: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
   },
   statLabel: {
-    color: '#A8A8A8',
-    fontSize: 12,
+    color: '#E0E0E0',
+    fontSize: 12.5,
     marginTop: 2,
   },
-  bioContainer: {
+  bioSection: {
     paddingHorizontal: 16,
-    marginTop: 8,
+    marginTop: 10,
   },
-  displayName: {
+  fullName: {
     color: '#FFFFFF',
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: '700',
   },
-  userEmail: {
+  roleText: {
     color: '#737373',
     fontSize: 12.5,
     marginTop: 1,
   },
-  userBioText: {
-    color: '#E0E0E0',
+  bioText: {
+    color: '#F5F5F5',
     fontSize: 13,
     marginTop: 4,
     lineHeight: 18,
   },
-  actionButtonsRow: {
+  actionsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    gap: 10,
+    gap: 8,
     marginTop: 16,
   },
-  actionPillBtn: {
+  actionBtn: {
     flex: 1,
     backgroundColor: '#262626',
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 8,
     alignItems: 'center',
   },
-  actionPillBtnText: {
+  followBtn: {
+    backgroundColor: '#0095F6',
+  },
+  actionBtnText: {
     color: '#FFFFFF',
     fontSize: 13.5,
     fontWeight: '600',
   },
-  cardSection: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    backgroundColor: '#121212',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#262626',
-    overflow: 'hidden',
+  actionIconPill: {
+    backgroundColor: '#262626',
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  formContainer: {
-    padding: 16,
+  editForm: {
+    backgroundColor: '#121212',
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 12,
   },
   saveBtn: {
     backgroundColor: '#0095F6',
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 10,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 12,
-  },
-  btnDisabled: {
-    opacity: 0.6,
+    marginTop: 8,
   },
   saveBtnText: {
     color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 14,
   },
-  infoList: {
-    paddingVertical: 6,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  highlightsContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#262626',
+    marginTop: 18,
+    paddingBottom: 8,
   },
-  infoTextContainer: {
-    marginLeft: 14,
-    flex: 1,
-  },
-  infoLabel: {
-    color: '#737373',
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  infoValue: {
-    color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  settingsSection: {
-    marginTop: 24,
-    marginHorizontal: 16,
-  },
-  sectionHeaderTitle: {
-    color: '#737373',
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 8,
-    marginLeft: 4,
-    letterSpacing: 0.5,
-  },
-  settingRow: {
-    flexDirection: 'row',
+  highlightItem: {
     alignItems: 'center',
-    backgroundColor: '#121212',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
+    width: 64,
+  },
+  highlightPlusCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     borderWidth: 1,
-    borderColor: '#262626',
-  },
-  logoutRow: {
-    borderColor: 'rgba(237, 73, 86, 0.3)',
-  },
-  settingIconContainer: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#262626',
+    borderColor: '#303030',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  settingTextContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  settingTitle: {
+  highlightLabel: {
     color: '#FFFFFF',
+    fontSize: 12,
+    marginTop: 6,
+  },
+  gridTabs: {
+    flexDirection: 'row',
+    borderTopWidth: 0.5,
+    borderTopColor: '#262626',
+    marginTop: 14,
+  },
+  gridTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  gridTabActive: {
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#FFFFFF',
+  },
+  centerLoader: {
+    paddingVertical: 40,
+  },
+  postsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 1.5,
+  },
+  gridImageWrapper: {
+    width: GRID_ITEM_SIZE,
+    height: GRID_ITEM_SIZE,
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  emptyGridContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 40,
+    paddingHorizontal: 40,
+  },
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  emptyGridTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  emptyGridSubtitle: {
+    color: '#737373',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  shareFirstBtn: {
+    paddingVertical: 6,
+  },
+  shareFirstBtnText: {
+    color: '#0095F6',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  logoutBtn: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    marginTop: 20,
+  },
+  logoutText: {
+    color: '#ED4956',
     fontSize: 14,
     fontWeight: '600',
-  },
-  settingSubtitle: {
-    color: '#737373',
-    fontSize: 11.5,
-    marginTop: 1,
   },
 });

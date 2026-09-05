@@ -175,10 +175,15 @@ export const ChatDetailScreen = ({ route, navigation }) => {
 
   // 4. Send message handler (supports text, heart, and all media types)
   const handleSendMessage = async (textOverride = null, mediaOverride = null) => {
-    const textToSend = textOverride !== null ? textOverride : inputText.trim();
+    let textToSend = textOverride !== null ? textOverride : inputText.trim();
     const mediaToSend = mediaOverride !== null ? mediaOverride : selectedMedia;
 
     if (!textToSend && !mediaToSend) return;
+
+    // If only media is being sent with no text, provide default fallback text
+    if (!textToSend && mediaToSend) {
+      textToSend = mediaToSend.message || (mediaToSend.file_type === 'image' ? '📷 Photo' : '📎 Attachment');
+    }
 
     stopTyping(chatId);
     setSending(true);
