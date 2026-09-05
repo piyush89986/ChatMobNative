@@ -1,0 +1,62 @@
+import axios from 'axios';
+import { storage } from '../utils/storage';
+import { DEFAULT_HOST } from '../utils/constants';
+
+let cachedBaseUrl = DEFAULT_HOST;
+
+export const setApiBaseUrl = (url) => {
+  if (url) {
+    cachedBaseUrl = url.replace(/\/$/, '');
+  }
+};
+
+export const getApiBaseUrl = () => cachedBaseUrl;
+
+const apiClient = axios.create({
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request Interceptor to dynamically attach baseURL and Bearer token
+apiClient.interceptors.request.use(
+  async (config) => {
+    const savedUrl = await storage.getServerUrl();
+    const activeUrl = savedUrl || cachedBaseUrl || DEFAULT_HOST;
+    config.baseURL = activeUrl.replace(/\/$/, '');
+
+    const token = await storage.getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response Interceptor for user-friendly error normalization
+apiClient.interceptors.response.use(
+  (response) => {
+    return response.data;
+  },
+  (error) => {
+    let message = 'Network connection failed. Check if server is running.';
+    if (error.response) {
+      if (error.response.data && error.response.data.message) {
+        message = error.response.data.message;
+      } else if (typeof error.response.data === 'string') {
+        message = error.response.data;
+      } else {
+        message = `Server error (${error.response.status})`;
+      }
+    } else if (error.code === 'ECONNABORTED') {
+      message = 'Request timed out. Server is taking too long to respond.';
+    } else if (error.message) {
+      message = error.message;
+    }
+    return Promise.reject(new Error(message));
+  }
+);
+
+export default apiClient;
