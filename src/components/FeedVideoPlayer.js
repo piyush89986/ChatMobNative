@@ -1,52 +1,93 @@
-import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import React, { useState, Component } from 'react';
+import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 
-export const FeedVideoPlayer = ({
+// Error Boundary to prevent any native video crashes from blocking the UI
+class VideoErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error) {
+    console.log('[VideoPlayer Error Caught]:', error?.message);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={[styles.container, this.props.style]}>
+          <Image
+            source={{ uri: this.props.sourceUrl }}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode="cover"
+          />
+          <View style={styles.errorOverlay}>
+            <Ionicons name="play-circle-outline" size={42} color="rgba(255,255,255,0.7)" />
+          </View>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const VideoPlayerInner = ({
   sourceUrl,
   style,
-  resizeMode = ResizeMode.COVER,
+  contentFit = 'cover',
   isLooping = true,
   autoPlay = true,
   showMuteButton = true,
 }) => {
-  const videoRef = useRef(null);
   const [isMuted, setIsMuted] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(autoPlay);
-  const [loading, setLoading] = useState(true);
 
-  const handleTogglePlayMute = () => {
-    setIsMuted((prev) => !prev);
+  const player = useVideoPlayer(sourceUrl || '', (p) => {
+    try {
+      p.loop = isLooping;
+      p.muted = false;
+      if (autoPlay) {
+        p.play();
+      }
+    } catch (e) {
+      console.log('Player init error:', e?.message);
+    }
+  });
+
+  const handleToggleMute = () => {
+    if (!player) return;
+    try {
+      const nextMuted = !player.muted;
+      player.muted = nextMuted;
+      setIsMuted(nextMuted);
+    } catch (e) {
+      console.log('Toggle mute error:', e?.message);
+    }
   };
+
+  if (!sourceUrl) {
+    return <View style={[styles.container, style]} />;
+  }
 
   return (
     <TouchableOpacity
       activeOpacity={0.95}
       style={[styles.container, style]}
-      onPress={handleTogglePlayMute}
+      onPress={handleToggleMute}
     >
-      <Video
-        ref={videoRef}
-        source={{ uri: sourceUrl }}
+      <VideoView
         style={StyleSheet.absoluteFillObject}
-        resizeMode={resizeMode}
-        isLooping={isLooping}
-        shouldPlay={isPlaying}
-        isMuted={isMuted}
-        onLoadStart={() => setLoading(true)}
-        onLoad={() => setLoading(false)}
-        onError={(err) => {
-          console.log('Video play error:', err);
-          setLoading(false);
-        }}
+        player={player}
+        allowsFullscreen={false}
+        allowsPictureInPicture={false}
+        contentFit={contentFit}
+        nativeControls={false}
       />
-
-      {loading && (
-        <View style={styles.loaderOverlay}>
-          <ActivityIndicator size="small" color="#FFFFFF" />
-        </View>
-      )}
 
       {showMuteButton && (
         <View style={styles.muteBadge}>
@@ -58,6 +99,14 @@ export const FeedVideoPlayer = ({
         </View>
       )}
     </TouchableOpacity>
+  );
+};
+
+export const FeedVideoPlayer = (props) => {
+  return (
+    <VideoErrorBoundary style={props.style} sourceUrl={props.sourceUrl}>
+      <VideoPlayerInner {...props} />
+    </VideoErrorBoundary>
   );
 };
 
@@ -88,4 +137,11 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
+  errorOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
 });
+
