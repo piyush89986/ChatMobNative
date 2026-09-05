@@ -226,9 +226,10 @@ export const HomeScreen = ({ navigation }) => {
                 </View>
 
                 {/* Other Users' Grouped Active Stories */}
-                {Object.keys(groupedStories).map((userId) => {
-                  const userStories = groupedStories[userId];
+                {Object.keys(groupedStories || {}).map((userId) => {
+                  const userStories = groupedStories[userId] || [];
                   const firstStory = userStories[0];
+                  if (!firstStory) return null;
                   const author = firstStory?.user || {};
 
                   return (
