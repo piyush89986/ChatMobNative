@@ -7,6 +7,7 @@ import { NotificationsScreen } from '../screens/main/NotificationsScreen';
 import { SearchUsersScreen } from '../screens/main/SearchUsersScreen';
 import { CreateGroupScreen } from '../screens/main/CreateGroupScreen';
 import { ChatsListScreen } from '../screens/main/ChatsListScreen';
+import { ProfileScreen } from '../screens/main/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -25,6 +26,7 @@ export const MainNavigator = () => {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="SearchUsers" component={SearchUsersScreen} />
       <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
     </Stack.Navigator>
   );
 };

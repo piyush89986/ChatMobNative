@@ -132,6 +132,15 @@ export const ProfileScreen = ({ navigation, route }) => {
       {/* 1. Header matching Screenshot Image 5 */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          {navigation.canGoBack() && (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={{ marginRight: 10, padding: 2 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          )}
           <Ionicons name="lock-closed" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
           <Text style={styles.headerUsername} numberOfLines={1}>
             {user?.user_name || 'Profile'}
