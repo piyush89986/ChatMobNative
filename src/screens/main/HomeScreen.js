@@ -114,6 +114,7 @@ export const HomeScreen = ({ navigation }) => {
     });
 
   const otherUsersList = Object.values(otherStoriesByUser);
+  const groupedStories = otherStoriesByUser;
 
   const handleOpenMyStory = () => {
     if (myStories.length > 0) {
