@@ -77,7 +77,7 @@ export const PostCard = ({
   };
 
   const author = post.author || {};
-  const authorName = author.user_name || 'Instagram User';
+  const authorName = author.user_name || 'FOMO User';
   const authorAvatar = author.avatar;
 
   const caption = post.caption || '';

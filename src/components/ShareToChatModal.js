@@ -202,7 +202,7 @@ export const ShareToChatModal = ({
 
           {/* Header */}
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Share to Messenger</Text>
+            <Text style={styles.sheetTitle}>Share to FOMO Chat</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={24} color="#FFFFFF" />
             </TouchableOpacity>

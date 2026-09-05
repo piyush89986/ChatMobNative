@@ -8,8 +8,8 @@ import { Platform } from 'react-native';
 export const DEFAULT_HOST = 'https://mobailchatappbackend.onrender.com';
 
 export const STORAGE_KEYS = {
-  AUTH_TOKEN: 'chatsphere_auth_token',
-  USER_DATA: 'chatsphere_user_data',
-  SERVER_URL: 'chatsphere_server_url',
-  ACTIVE_THEME: 'chatsphere_theme',
+  AUTH_TOKEN: 'fomo_auth_token',
+  USER_DATA: 'fomo_user_data',
+  SERVER_URL: 'fomo_server_url',
+  ACTIVE_THEME: 'fomo_theme',
 };

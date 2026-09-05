@@ -136,7 +136,7 @@ export const ChatsListScreen = ({ navigation }) => {
             activeOpacity={0.7}
           >
             <Text style={styles.headerUsername} numberOfLines={1}>
-              {user?.user_name || 'Direct'}
+              {user?.user_name || 'FOMO'}
             </Text>
             <Ionicons name="chevron-down" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
             <View style={styles.directRedBadgeDot} />
@@ -154,14 +154,14 @@ export const ChatsListScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* 2. Search or ask Meta AI matching Screenshot 3 */}
+      {/* 2. Search bar */}
       <TouchableOpacity
         style={styles.searchBar}
         activeOpacity={0.8}
         onPress={() => navigation.navigate('SearchUsers')}
       >
         <Ionicons name="search" size={18} color="#8E8E8E" style={styles.searchIcon} />
-        <Text style={styles.searchPlaceholder}>Search or ask Meta AI</Text>
+        <Text style={styles.searchPlaceholder}>Search chats & friends</Text>
       </TouchableOpacity>
 
       {/* 3. Notes Tray matching Screenshot 3 */}

@@ -15,11 +15,18 @@ export const storage = {
 
   async getToken() {
     try {
-      const val = await SecureStore.getItemAsync(STORAGE_KEYS.AUTH_TOKEN);
+      let val = await SecureStore.getItemAsync(STORAGE_KEYS.AUTH_TOKEN);
+      if (!val) {
+        val = await SecureStore.getItemAsync('chatsphere_auth_token');
+        if (val) {
+          // Migrate to new FOMO key
+          await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, val).catch(() => {});
+        }
+      }
       if (val) return val;
-      return memoryFallback.get(STORAGE_KEYS.AUTH_TOKEN) || null;
+      return memoryFallback.get(STORAGE_KEYS.AUTH_TOKEN) || memoryFallback.get('chatsphere_auth_token') || null;
     } catch (e) {
-      return memoryFallback.get(STORAGE_KEYS.AUTH_TOKEN) || null;
+      return memoryFallback.get(STORAGE_KEYS.AUTH_TOKEN) || memoryFallback.get('chatsphere_auth_token') || null;
     }
   },
 
@@ -35,12 +42,18 @@ export const storage = {
 
   async getUser() {
     try {
-      const str = await SecureStore.getItemAsync(STORAGE_KEYS.USER_DATA);
+      let str = await SecureStore.getItemAsync(STORAGE_KEYS.USER_DATA);
+      if (!str) {
+        str = await SecureStore.getItemAsync('chatsphere_user_data');
+        if (str) {
+          await SecureStore.setItemAsync(STORAGE_KEYS.USER_DATA, str).catch(() => {});
+        }
+      }
       if (str) return JSON.parse(str);
-      const mem = memoryFallback.get(STORAGE_KEYS.USER_DATA);
+      const mem = memoryFallback.get(STORAGE_KEYS.USER_DATA) || memoryFallback.get('chatsphere_user_data');
       return mem ? JSON.parse(mem) : null;
     } catch (e) {
-      const mem = memoryFallback.get(STORAGE_KEYS.USER_DATA);
+      const mem = memoryFallback.get(STORAGE_KEYS.USER_DATA) || memoryFallback.get('chatsphere_user_data');
       return mem ? JSON.parse(mem) : null;
     }
   },

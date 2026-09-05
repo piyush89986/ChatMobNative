@@ -94,7 +94,7 @@ export const RegisterScreen = ({ navigation }) => {
           <View style={styles.formCard}>
             <Text style={styles.cardTitle}>Create Account</Text>
             <Text style={styles.cardSubtitle}>
-              Sign up to start chatting on Direct
+              Sign up to join FOMO
             </Text>
 
             {errorMessage ? (
