@@ -4,6 +4,14 @@ export const getFeedPosts = async (page = 1, limit = 20) => {
   return await apiClient.get(`/posts?page=${page}&limit=${limit}`);
 };
 
+export const uploadMedia = async (formData) => {
+  return await apiClient.post('/posts/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
 export const createPost = async (payload) => {
   return await apiClient.post('/posts', payload);
 };

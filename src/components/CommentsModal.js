@@ -10,8 +10,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from './Avatar';
 import { COLORS } from '../theme/colors';
@@ -138,7 +138,7 @@ export const CommentsModal = ({
           />
 
           {/* Bottom Input */}
-          <SafeAreaView style={styles.inputArea}>
+          <SafeAreaView style={styles.inputArea} edges={['bottom']}>
             <Avatar
               uri={currentUser?.avatar}
               name={currentUser?.user_name || 'Me'}

@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  SafeAreaView,
   ScrollView,
+  Dimensions,
+  Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../theme/colors';
 import { searchUsers } from '../../api/user';
@@ -17,31 +19,30 @@ import { accessOrCreateChat } from '../../api/chat';
 import { Avatar } from '../../components/Avatar';
 import { useSocket } from '../../context/SocketContext';
 
-const QUICK_TAGS = ['Friends', 'Nearby', 'Developers', 'Music', 'Gaming', 'Photography'];
+const { width } = Dimensions.get('window');
+const GRID_ITEM_WIDTH = (width - 4) / 3;
+
+const EXPLORE_ITEMS = [
+  { id: 'ex_1', views: '1.1M', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500', isVideo: true },
+  { id: 'ex_2', views: '691K', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500', isVideo: true },
+  { id: 'ex_3', views: '7.9M', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500', isVideo: true },
+  { id: 'ex_4', views: '1M', image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500', isVideo: true },
+  { id: 'ex_5', views: '289K', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500', isVideo: false },
+  { id: 'ex_6', views: '171K', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500', isVideo: true },
+  { id: 'ex_7', views: '261K', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500', isVideo: true },
+  { id: 'ex_8', views: '3.8M', image: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=500', isVideo: false },
+  { id: 'ex_9', views: '884K', image: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=500', isVideo: true },
+  { id: 'ex_10', views: '190K', image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=500', isVideo: true },
+  { id: 'ex_11', views: '1.7M', image: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=500', isVideo: true },
+  { id: 'ex_12', views: '379K', image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500', isVideo: false },
+];
 
 export const SearchUsersScreen = ({ navigation }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
-  const [suggested, setSuggested] = useState([]);
   const [loading, setLoading] = useState(false);
   const [startingChatId, setStartingChatId] = useState(null);
-  const [recentSearches, setRecentSearches] = useState(['Alex', 'Piyush', 'Sarah']);
   const { isUserOnline } = useSocket();
-
-  // Load initial suggested users by searching a common prefix
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-      try {
-        const res = await searchUsers('a');
-        if (res && res.data) {
-          setSuggested(res.data.slice(0, 8));
-        }
-      } catch (err) {
-        // Silent fallback
-      }
-    };
-    fetchSuggestions();
-  }, []);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -68,11 +69,6 @@ export const SearchUsersScreen = ({ navigation }) => {
 
   const handleStartChat = async (targetUser) => {
     setStartingChatId(targetUser._id);
-    // Add to recents
-    if (targetUser.user_name && !recentSearches.includes(targetUser.user_name)) {
-      setRecentSearches((prev) => [targetUser.user_name, ...prev.slice(0, 4)]);
-    }
-
     try {
       const res = await accessOrCreateChat(targetUser._id);
       if (res && res.data) {
@@ -102,155 +98,102 @@ export const SearchUsersScreen = ({ navigation }) => {
         <Avatar
           uri={item.avatar}
           name={item.user_name}
-          size={54}
+          size={50}
           isOnline={isOnline}
-          showOnlineBadge={isOnline}
           showStoryRing={true}
         />
 
         <View style={styles.userInfo}>
-          <View style={styles.userNameRow}>
-            <Text style={styles.userName} numberOfLines={1}>
-              {item.user_name}
-            </Text>
-            {isOnline && <View style={styles.activeDot} />}
-          </View>
-          <Text style={styles.userHandle} numberOfLines={1}>
-            {item.email || item.phone || '@instagram_user'}
+          <Text style={styles.userNameText} numberOfLines={1}>
+            {item.user_name}
           </Text>
-          {item.bio ? (
-            <Text style={styles.userBio} numberOfLines={1}>
-              {item.bio}
-            </Text>
-          ) : (
-            <Text style={styles.userBio} numberOfLines={1}>
-              Active on Direct
-            </Text>
-          )}
+          <Text style={styles.userSubtext} numberOfLines={1}>
+            {item.bio || 'FOMO friend'}
+          </Text>
         </View>
 
         <TouchableOpacity
-          style={[styles.messageBtn, isStarting && styles.messageBtnDisabled]}
+          style={styles.chatButton}
           onPress={() => handleStartChat(item)}
           disabled={isStarting}
         >
           {isStarting ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.messageBtnText}>Chat</Text>
+            <Text style={styles.chatButtonText}>Chat</Text>
           )}
         </TouchableOpacity>
       </TouchableOpacity>
     );
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Header with Search Bar */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
+  const renderExploreItem = ({ item }) => {
+    return (
+      <TouchableOpacity
+        style={styles.exploreItemWrapper}
+        activeOpacity={0.8}
+        onPress={() => navigation.navigate('ReelsTab')}
+      >
+        <Image source={{ uri: item.image }} style={styles.exploreImage} resizeMode="cover" />
+        <View style={styles.viewBadge}>
+          <Ionicons name="eye-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+          <Text style={styles.viewBadgeText}>{item.views}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
-        <View style={styles.searchBarContainer}>
-          <Ionicons name="search" size={17} color={COLORS.textMuted} />
+  return (
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* 1. Search with Meta AI Input Bar matching Screenshot 2 */}
+      <View style={styles.searchBarContainer}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={20} color="#8E8E8E" style={{ marginRight: 8 }} />
           <TextInput
+            style={styles.searchInput}
+            placeholder="Search with Meta AI"
+            placeholderTextColor="#8E8E8E"
             value={query}
             onChangeText={setQuery}
-            placeholder="Search friends by name or username"
-            placeholderTextColor={COLORS.textMuted}
-            style={styles.searchInput}
-            autoFocus
             autoCapitalize="none"
             autoCorrect={false}
           />
           {query.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setQuery('')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+            <TouchableOpacity onPress={() => setQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close-circle" size={18} color="#8E8E8E" />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* When query is empty: Show Suggested and Recent Searches */}
-      {!query.trim() ? (
-        <ScrollView style={styles.emptySearchScroll} showsVerticalScrollIndicator={false}>
-          {/* Quick Categories */}
-          <View style={styles.tagsContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagsContent}>
-              {QUICK_TAGS.map((tag) => (
-                <TouchableOpacity
-                  key={tag}
-                  style={styles.tagChip}
-                  onPress={() => setQuery(tag.toLowerCase())}
-                >
-                  <Text style={styles.tagText}>{tag}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Recent Searches */}
-          {recentSearches.length > 0 && (
-            <View style={styles.sectionBlock}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>Recent Searches</Text>
-                <TouchableOpacity onPress={() => setRecentSearches([])}>
-                  <Text style={styles.clearText}>Clear all</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.recentTagsRow}>
-                {recentSearches.map((term, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.recentPill}
-                    onPress={() => setQuery(term)}
-                  >
-                    <Ionicons name="time-outline" size={14} color="#A8A8A8" />
-                    <Text style={styles.recentPillText}>{term}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Suggested For You */}
-          {suggested.length > 0 && (
-            <View style={styles.sectionBlock}>
-              <Text style={styles.sectionTitle}>Suggested For You</Text>
-              {suggested.map((item) => (
-                <View key={item._id}>{renderUserItem({ item })}</View>
-              ))}
-            </View>
-          )}
-        </ScrollView>
-      ) : loading ? (
+      {/* 2. Body Content: Search Results OR Trending Explore Grid */}
+      {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="small" color="#FFFFFF" />
+          <ActivityIndicator size="large" color="#0095F6" />
         </View>
-      ) : (
+      ) : query.trim() ? (
         <FlatList
           data={results}
           keyExtractor={(item) => item._id}
           renderItem={renderUserItem}
+          contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="search-outline" size={54} color="#363636" />
-              <Text style={styles.emptyText}>No accounts found for "{query}"</Text>
-              <Text style={styles.emptySubText}>
-                Check spelling or search for someone else by username.
-              </Text>
+              <Ionicons name="search-outline" size={48} color="#333333" />
+              <Text style={styles.emptyText}>No users found for "{query}"</Text>
             </View>
           }
-          contentContainerStyle={styles.listContent}
+        />
+      ) : (
+        /* Explore 3-Column Grid matching Screenshot 2 */
+        <FlatList
+          data={EXPLORE_ITEMS}
+          keyExtractor={(item) => item.id}
+          renderItem={renderExploreItem}
+          numColumns={3}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.exploreGridContent}
         />
       )}
     </SafeAreaView>
@@ -262,153 +205,84 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-    backgroundColor: '#000000',
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#262626',
-    gap: 12,
-  },
-  backBtn: {
-    padding: 4,
-  },
   searchBarContainer: {
-    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#1A1A1A',
+  },
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#262626',
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 40,
-    gap: 8,
+    height: 42,
   },
   searchInput: {
     flex: 1,
     color: '#FFFFFF',
-    fontSize: 14.5,
-    fontWeight: '400',
-  },
-  tagsContainer: {
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#1F1F1F',
-  },
-  tagsContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  tagChip: {
-    backgroundColor: '#1E1E1E',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#303030',
-  },
-  tagText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  emptySearchScroll: {
-    flex: 1,
-  },
-  sectionBlock: {
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
-    paddingHorizontal: 16,
-    marginBottom: 10,
-    letterSpacing: -0.2,
+    paddingVertical: 0,
   },
-  clearText: {
-    color: '#0095F6',
-    fontSize: 13,
+  exploreGridContent: {
+    paddingBottom: 20,
+  },
+  exploreItemWrapper: {
+    width: GRID_ITEM_WIDTH,
+    height: GRID_ITEM_WIDTH * 1.35,
+    margin: 0.7,
+    position: 'relative',
+    backgroundColor: '#1C1C1E',
+  },
+  exploreImage: {
+    width: '100%',
+    height: '100%',
+  },
+  viewBadge: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  viewBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '600',
-  },
-  recentTagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    gap: 8,
-    marginBottom: 8,
-  },
-  recentPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1C1C1C',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-    borderWidth: 0.5,
-    borderColor: '#303030',
-  },
-  recentPillText: {
-    color: '#E0E0E0',
-    fontSize: 13,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   listContent: {
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
   userRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#000000',
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#1A1A1A',
   },
   userInfo: {
     flex: 1,
     marginLeft: 14,
+    justifyContent: 'center',
   },
-  userNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  userName: {
-    fontSize: 14.5,
-    fontWeight: '700',
+  userNameText: {
     color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
   },
-  activeDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: COLORS.online,
+  userSubtext: {
+    color: '#8E8E8E',
+    fontSize: 13,
   },
-  userHandle: {
-    fontSize: 12.5,
-    color: '#A8A8A8',
-    marginTop: 1,
-  },
-  userBio: {
-    fontSize: 11.5,
-    color: '#737373',
-    marginTop: 2,
-  },
-  messageBtn: {
+  chatButton: {
     backgroundColor: '#0095F6',
     paddingHorizontal: 16,
     paddingVertical: 7,
@@ -416,32 +290,24 @@ const styles = StyleSheet.create({
     minWidth: 70,
     alignItems: 'center',
   },
-  messageBtnDisabled: {
-    opacity: 0.6,
-  },
-  messageBtnText: {
+  chatButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 80,
-    paddingHorizontal: 40,
-    gap: 8,
   },
   emptyText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  emptySubText: {
     color: '#737373',
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
+    fontSize: 15,
+    marginTop: 12,
   },
 });

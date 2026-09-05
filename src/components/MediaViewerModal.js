@@ -6,10 +6,10 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 
@@ -33,7 +33,7 @@ export const MediaViewerModal = ({
       onRequestClose={onClose}
     >
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
         {/* Top Header */}
         <View style={styles.header}>
           <TouchableOpacity

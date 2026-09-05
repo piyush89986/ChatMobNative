@@ -8,8 +8,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   ScrollView,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
@@ -110,8 +110,8 @@ export const ChatsListScreen = ({ navigation }) => {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* 1. Instagram Direct Header */}
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* 1. Direct Header matching Screenshot 3 */}
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {navigation.canGoBack() && (
@@ -133,24 +133,11 @@ export const ChatsListScreen = ({ navigation }) => {
               {user?.user_name || 'Direct'}
             </Text>
             <Ionicons name="chevron-down" size={16} color="#FFFFFF" style={{ marginLeft: 4 }} />
-            <View
-              style={[
-                styles.connectionDot,
-                { backgroundColor: isConnected ? COLORS.online : COLORS.error },
-              ]}
-            />
+            <View style={styles.directRedBadgeDot} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerActionBtn}
-            onPress={() => navigation.navigate('CreateGroup')}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="people-outline" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.headerActionBtn}
             onPress={() => navigation.navigate('SearchUsers')}
@@ -161,46 +148,92 @@ export const ChatsListScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* 2. Instagram Search Bar */}
+      {/* 2. Search or ask Meta AI matching Screenshot 3 */}
       <TouchableOpacity
         style={styles.searchBar}
         activeOpacity={0.8}
         onPress={() => navigation.navigate('SearchUsers')}
       >
-        <Ionicons name="search" size={17} color={COLORS.textMuted} style={styles.searchIcon} />
-        <Text style={styles.searchPlaceholder}>Search</Text>
+        <Ionicons name="search" size={18} color="#8E8E8E" style={styles.searchIcon} />
+        <Text style={styles.searchPlaceholder}>Search or ask Meta AI</Text>
       </TouchableOpacity>
 
-      {/* 3. Instagram Notes & Active Reel */}
+      {/* 3. Notes Tray matching Screenshot 3 */}
       <View style={styles.notesSection}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.notesListContent}
         >
-          {/* User's own Note Pill */}
+          {/* User's own Note with "Just curious..." bubble */}
           <TouchableOpacity
             style={styles.noteItem}
             activeOpacity={0.8}
             onPress={() => navigation.navigate('Profile')}
           >
             <View style={styles.noteAvatarWrapper}>
-              <Avatar uri={user?.avatar} name={user?.user_name || 'Me'} size={68} />
-              <View style={styles.noteBubble}>
-                <Text style={styles.noteBubbleText} numberOfLines={1}>
-                  Your note
+              <View style={styles.noteSpeechBubble}>
+                <Text style={styles.noteSpeechText} numberOfLines={2}>
+                  Just curious...
                 </Text>
-                <View style={styles.noteBubblePlus}>
-                  <Ionicons name="add" size={12} color="#FFFFFF" />
-                </View>
               </View>
+              <Avatar uri={user?.avatar} name={user?.user_name || 'Me'} size={68} />
             </View>
             <Text style={styles.noteUserName} numberOfLines={1}>
               Your note
             </Text>
+            <Text style={styles.noteSubtitle}>📍 Location off</Text>
           </TouchableOpacity>
 
-          {/* Friends with Stories / Notes */}
+          {/* Friend Note 1: Manglesh */}
+          <TouchableOpacity
+            style={styles.noteItem}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('SearchUsers')}
+          >
+            <View style={styles.noteAvatarWrapper}>
+              <View style={styles.noteSpeechBubble}>
+                <Text style={styles.noteSpeechText} numberOfLines={2}>
+                  || Tamara..{'\n'}Geeta Jhal.. 😊
+                </Text>
+              </View>
+              <Avatar
+                uri="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150"
+                name="Manglesh"
+                size={68}
+                showStoryRing={true}
+              />
+            </View>
+            <Text style={styles.noteUserName} numberOfLines={1}>
+              मंगलेश सिंह मौर्य 🔱
+            </Text>
+          </TouchableOpacity>
+
+          {/* Friend Note 2: Sumit */}
+          <TouchableOpacity
+            style={styles.noteItem}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('SearchUsers')}
+          >
+            <View style={styles.noteAvatarWrapper}>
+              <View style={styles.noteSpeechBubble}>
+                <Text style={styles.noteSpeechText} numberOfLines={2}>
+                  || Legacy{'\n'}Vikram Sar...
+                </Text>
+              </View>
+              <Avatar
+                uri="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150"
+                name="Sumit"
+                size={68}
+                showStoryRing={true}
+              />
+            </View>
+            <Text style={styles.noteUserName} numberOfLines={1}>
+              SUMIT 🔱
+            </Text>
+          </TouchableOpacity>
+
+          {/* Dynamic contacts */}
           {noteContacts.map((contact) => (
             <TouchableOpacity
               key={contact.user._id}
@@ -222,11 +255,6 @@ export const ChatsListScreen = ({ navigation }) => {
                   showOnlineBadge={contact.isOnline}
                   showStoryRing={true}
                 />
-                {contact.isOnline && (
-                  <View style={styles.activeNoteBadge}>
-                    <Text style={styles.activeNoteText}>Active</Text>
-                  </View>
-                )}
               </View>
               <Text style={styles.noteUserName} numberOfLines={1}>
                 {contact.user.user_name?.split(' ')[0]}
@@ -236,7 +264,7 @@ export const ChatsListScreen = ({ navigation }) => {
         </ScrollView>
       </View>
 
-      {/* 4. Instagram Direct Filter Tabs: Messages vs Requests */}
+      {/* 4. Filter Tabs: Messages vs Requests */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
           style={[styles.tabItem, activeTab === 'chats' && styles.tabItemActive]}
@@ -252,7 +280,7 @@ export const ChatsListScreen = ({ navigation }) => {
           onPress={() => setActiveTab('requests')}
         >
           <View style={styles.requestTabRow}>
-            <Text style={[styles.tabTitle, activeTab === 'requests' && styles.tabTitleActive]}>
+            <Text style={[styles.tabTitle, { color: '#0095F6' }]}>
               Requests
             </Text>
             {pendingRequests.length > 0 && (
@@ -415,9 +443,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: 74,
   },
-  noteAvatarWrapper: {
-    position: 'relative',
+  directRedBadgeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#FF2D55',
+    marginLeft: 6,
+  },
+  noteSpeechBubble: {
+    backgroundColor: '#262626',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 4,
+    maxWidth: 82,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#383838',
+  },
+  noteSpeechText: {
+    color: '#D4D4D4',
+    fontSize: 9.5,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 12,
+  },
+  noteSubtitle: {
+    color: '#8E8E8E',
+    fontSize: 9,
+    marginTop: 1,
+    textAlign: 'center',
   },
   noteBubble: {
     position: 'absolute',

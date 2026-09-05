@@ -12,8 +12,8 @@ import {
   Image,
   Alert,
   Modal,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
@@ -379,7 +379,7 @@ export const ChatDetailScreen = ({ route, navigation }) => {
   const hasTextOrMedia = Boolean(inputText.trim() || selectedMedia);
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}

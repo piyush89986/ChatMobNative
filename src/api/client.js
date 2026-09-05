@@ -13,7 +13,7 @@ export const setApiBaseUrl = (url) => {
 export const getApiBaseUrl = () => cachedBaseUrl;
 
 const apiClient = axios.create({
-  timeout: 15000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },

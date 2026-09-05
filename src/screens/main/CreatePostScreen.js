@@ -8,12 +8,12 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { createPost, createStory } from '../../api/post';
+import { createPost, createStory, uploadMedia } from '../../api/post';
 
 export const CreatePostScreen = ({ navigation }) => {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -27,7 +27,7 @@ export const CreatePostScreen = ({ navigation }) => {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images', 'videos'],
         allowsEditing: true,
-        quality: 0.8,
+        quality: 0.5,
         base64: true,
       });
 
@@ -49,7 +49,7 @@ export const CreatePostScreen = ({ navigation }) => {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images', 'videos'],
-        quality: 0.8,
+        quality: 0.5,
         base64: true,
       });
 
@@ -69,36 +69,57 @@ export const CreatePostScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const mediaDataUri = selectedImage.base64
+      let uploadedUrl = null;
+      try {
+        const formData = new FormData();
+        const filename = selectedImage.uri.split('/').pop() || `upload_${Date.now()}.jpg`;
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : (selectedImage.mimeType || 'image/jpeg');
+
+        formData.append('media', {
+          uri: selectedImage.uri,
+          name: filename,
+          type: type,
+        });
+
+        const uploadRes = await uploadMedia(formData);
+        if (uploadRes && uploadRes.data && uploadRes.data.url) {
+          uploadedUrl = uploadRes.data.url;
+        }
+      } catch (uploadErr) {
+        console.log('Direct upload error, trying base64 fallback:', uploadErr.message);
+      }
+
+      const finalMediaUrl = uploadedUrl || (selectedImage.base64
         ? `data:${selectedImage.mimeType || 'image/jpeg'};base64,${selectedImage.base64}`
-        : selectedImage.uri;
+        : selectedImage.uri);
 
       if (postType === 'story') {
         await createStory({
-          mediaUrl: mediaDataUri,
+          mediaUrl: finalMediaUrl,
           caption: caption.trim(),
         });
-        Alert.alert('Success', 'Added to your story!');
+        Alert.alert('Success', 'Added to your FOMO story!');
       } else {
         await createPost({
-          mediaUrl: mediaDataUri,
+          mediaUrl: finalMediaUrl,
           caption: caption.trim(),
           location: location.trim(),
         });
-        Alert.alert('Success', 'Post shared to feed!');
+        Alert.alert('Success', 'Post shared to FOMO feed!');
       }
 
       navigation.goBack();
     } catch (err) {
       console.log('Share error:', err);
-      Alert.alert('Error', err.message || 'Could not share post');
+      Alert.alert('Upload Failed', err.message || 'Could not share post. Please check internet connection.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>

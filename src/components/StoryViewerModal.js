@@ -6,12 +6,12 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Dimensions,
   Animated,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from './Avatar';
 
@@ -80,7 +80,7 @@ export const StoryViewerModal = ({
           />
         </View>
 
-        <SafeAreaView style={styles.contentOverlay}>
+        <SafeAreaView style={styles.contentOverlay} edges={['top', 'bottom', 'left', 'right']}>
           {/* Top Progress Bar */}
           <View style={styles.progressBarContainer}>
             <View style={styles.progressBarBg}>

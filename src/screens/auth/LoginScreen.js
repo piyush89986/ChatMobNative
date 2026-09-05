@@ -8,8 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../theme/colors';
@@ -43,7 +43,7 @@ export const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}
@@ -52,7 +52,7 @@ export const LoginScreen = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Instagram Branding */}
+          {/* FOMO Branding */}
           <View style={styles.brandContainer}>
             <TouchableOpacity
               onLongPress={() => setShowServerModal(true)}
@@ -68,15 +68,15 @@ export const LoginScreen = ({ navigation }) => {
               </LinearGradient>
             </TouchableOpacity>
 
-            <Text style={styles.appName}>Instagram Direct</Text>
+            <Text style={styles.appName}>FOMO</Text>
             <Text style={styles.tagline}>
-              Fast, private messaging with friends
+              Share stories, discover friends & connect
             </Text>
           </View>
 
           {/* Card Form */}
           <View style={styles.formCard}>
-            <Text style={styles.cardTitle}>Log in to Direct</Text>
+            <Text style={styles.cardTitle}>Log in to FOMO</Text>
 
             {errorMessage ? (
               <View style={styles.errorContainer}>

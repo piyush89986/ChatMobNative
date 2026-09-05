@@ -8,9 +8,9 @@ import {
   RefreshControl,
   ActivityIndicator,
   ScrollView,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { Avatar } from '../../components/Avatar';
@@ -147,8 +147,8 @@ export const HomeScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* 1. Instagram Home Top Bar */}
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* 1. FOMO Home Top Bar */}
       <View style={styles.topBar}>
         {/* Create Post Icon (+) */}
         <TouchableOpacity
@@ -159,8 +159,8 @@ export const HomeScreen = ({ navigation }) => {
           <Ionicons name="add-circle-outline" size={27} color="#FFFFFF" />
         </TouchableOpacity>
 
-        {/* Instagram Script Brand Title */}
-        <Text style={styles.logoText}>Instagram</Text>
+        {/* FOMO Script Brand Title */}
+        <Text style={styles.logoText}>FOMO</Text>
 
         {/* Right Icons: Notifications (Heart) & Direct Messages (Paperplane) */}
         <View style={styles.topRightActions}>
