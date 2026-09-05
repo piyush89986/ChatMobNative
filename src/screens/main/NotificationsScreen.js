@@ -14,41 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../components/Avatar';
 import { getNotifications } from '../../api/post';
 
-const SEED_NOTIFICATIONS = [
-  {
-    _id: 'n1',
-    sender: {
-      user_name: 'arun_dev',
-      avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100',
-    },
-    type: 'like',
-    text: 'liked your photo.',
-    post: { mediaUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150' },
-    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-  {
-    _id: 'n2',
-    sender: {
-      user_name: 'maisamayhoon',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-    },
-    type: 'comment',
-    text: 'commented: "Incredible shot! 🔥"',
-    post: { mediaUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=150' },
-    createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-  },
-  {
-    _id: 'n3',
-    sender: {
-      user_name: 'vikas_2607__',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100',
-    },
-    type: 'follow',
-    text: 'started following you.',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
-
 export const NotificationsScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,13 +22,14 @@ export const NotificationsScreen = ({ navigation }) => {
   const fetchNotifs = async () => {
     try {
       const res = await getNotifications();
-      if (res && res.data && res.data.length > 0) {
+      if (res && res.data) {
         setNotifications(res.data);
       } else {
-        setNotifications(SEED_NOTIFICATIONS);
+        setNotifications([]);
       }
     } catch (e) {
-      setNotifications(SEED_NOTIFICATIONS);
+      console.log('Error fetching notifications:', e.message);
+      setNotifications([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -74,11 +40,16 @@ export const NotificationsScreen = ({ navigation }) => {
     fetchNotifs();
   }, []);
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchNotifs();
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
@@ -86,57 +57,63 @@ export const NotificationsScreen = ({ navigation }) => {
 
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="small" color="#FFFFFF" />
+          <ActivityIndicator size="small" color="#0095F6" />
         </View>
-      ) : (
+      ) : notifications.length > 0 ? (
         <FlatList
           data={notifications}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
-            <View style={styles.notifRow}>
+            <TouchableOpacity
+              style={styles.notifRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                if (item.sender) {
+                  navigation.navigate('Profile', { targetUser: item.sender });
+                }
+              }}
+            >
               <Avatar
                 uri={item.sender?.avatar}
                 name={item.sender?.user_name || 'User'}
                 size={44}
-                showStoryRing={true}
+                showStoryRing={false}
               />
               <View style={styles.notifTextContainer}>
                 <Text style={styles.notifText}>
-                  <Text style={styles.usernameText}>{item.sender?.user_name || 'User'} </Text>
-                  {item.text}
-                </Text>
-                <Text style={styles.notifTime}>
-                  {new Date(item.createdAt).toLocaleDateString([], {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
+                  <Text style={styles.usernameBold}>
+                    {item.sender?.user_name || 'Someone'}{' '}
+                  </Text>
+                  {item.text || 'interacted with your post.'}
                 </Text>
               </View>
 
               {item.post?.mediaUrl ? (
-                <Image
-                  source={{ uri: item.post.mediaUrl }}
-                  style={styles.postThumbnail}
-                />
-              ) : item.type === 'follow' ? (
-                <TouchableOpacity style={styles.followBtn}>
-                  <Text style={styles.followBtnText}>Follow</Text>
-                </TouchableOpacity>
+                <Image source={{ uri: item.post.mediaUrl }} style={styles.postThumbnail} />
               ) : null}
-            </View>
+            </TouchableOpacity>
           )}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                fetchNotifs();
-              }}
+              onRefresh={onRefresh}
               tintColor="#FFFFFF"
+              colors={['#0095F6']}
             />
           }
           contentContainerStyle={styles.listContent}
         />
+      ) : (
+        /* Clean Empty State when zero notifications */
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconCircle}>
+            <Ionicons name="heart-outline" size={48} color="#FFFFFF" />
+          </View>
+          <Text style={styles.emptyTitle}>Activity On Your Posts</Text>
+          <Text style={styles.emptySubtitle}>
+            When someone likes or comments on your posts or stories, you'll see them here.
+          </Text>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -153,16 +130,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#262626',
-    gap: 16,
+    borderBottomColor: '#1F1F1F',
   },
   backBtn: {
-    padding: 4,
+    marginRight: 16,
   },
   headerTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   centerContainer: {
     flex: 1,
@@ -177,39 +153,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    gap: 12,
   },
   notifTextContainer: {
     flex: 1,
+    marginLeft: 12,
+    marginRight: 8,
   },
   notifText: {
-    color: '#E0E0E0',
+    color: '#FFFFFF',
     fontSize: 13.5,
     lineHeight: 18,
   },
-  usernameText: {
-    color: '#FFFFFF',
+  usernameBold: {
     fontWeight: '700',
-  },
-  notifTime: {
-    color: '#737373',
-    fontSize: 11,
-    marginTop: 2,
   },
   postThumbnail: {
     width: 44,
     height: 44,
     borderRadius: 6,
+    backgroundColor: '#1C1C1E',
   },
-  followBtn: {
-    backgroundColor: '#0095F6',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 8,
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 36,
   },
-  followBtnText: {
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: '700',
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    color: '#8E8E8E',
+    fontSize: 13.5,
+    textAlign: 'center',
+    lineHeight: 19,
   },
 });

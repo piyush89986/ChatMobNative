@@ -222,30 +222,22 @@ export const ProfileScreen = ({ navigation, route }) => {
                 <Text style={styles.statLabel}>posts</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>397</Text>
+                <Text style={styles.statNumber}>{user?.followers?.length || 0}</Text>
                 <Text style={styles.statLabel}>followers</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>306</Text>
+                <Text style={styles.statNumber}>{user?.following?.length || 0}</Text>
                 <Text style={styles.statLabel}>following</Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* 3. Bio & Category */}
+        {/* 3. Bio */}
         <View style={styles.bioSection}>
-          <Text style={styles.categoryText}>Jester</Text>
-
-          {/* Add Banners Pill Button */}
-          <TouchableOpacity
-            style={styles.addBannersBtn}
-            onPress={() => Alert.alert('Banners', 'Profile banners feature')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="add" size={16} color="#A8A8A8" style={{ marginRight: 4 }} />
-            <Text style={styles.addBannersText}>Add banners</Text>
-          </TouchableOpacity>
+          <Text style={styles.bioText}>
+            {user?.bio || (isOwnProfile ? 'Add your bio...' : 'FOMO Member')}
+          </Text>
         </View>
 
         {/* 4. Action Buttons (Edit profile, Share profile, +👤) */}

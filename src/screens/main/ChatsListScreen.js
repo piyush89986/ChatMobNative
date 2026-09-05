@@ -8,6 +8,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   ScrollView,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +28,9 @@ export const ChatsListScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('chats'); // 'chats' | 'requests'
+  const [myNote, setMyNote] = useState('');
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteInput, setNoteInput] = useState('');
 
   const fetchChats = useCallback(async () => {
     try {
@@ -165,19 +170,25 @@ export const ChatsListScreen = ({ navigation }) => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.notesListContent}
         >
-          {/* User's own Note with "Just curious..." bubble */}
+          {/* User's own Note */}
           <TouchableOpacity
             style={styles.noteItem}
             activeOpacity={0.8}
-            onPress={() => navigation.navigate('Profile')}
+            onPress={() => {
+              setNoteInput(myNote);
+              setShowNoteModal(true);
+            }}
           >
             <View style={styles.noteAvatarWrapper}>
               <View style={styles.noteSpeechBubble}>
                 <Text style={styles.noteSpeechText} numberOfLines={2}>
-                  Just curious...
+                  {myNote || 'Share a thought...'}
                 </Text>
               </View>
               <Avatar uri={user?.avatar} name={user?.user_name || 'Me'} size={68} />
+              <View style={styles.notePlusBadge}>
+                <Ionicons name={myNote ? "pencil" : "add"} size={12} color="#FFFFFF" />
+              </View>
             </View>
             <Text style={styles.noteUserName} numberOfLines={1}>
               Your note
@@ -185,55 +196,7 @@ export const ChatsListScreen = ({ navigation }) => {
             <Text style={styles.noteSubtitle}>📍 Location off</Text>
           </TouchableOpacity>
 
-          {/* Friend Note 1: Manglesh */}
-          <TouchableOpacity
-            style={styles.noteItem}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('SearchUsers')}
-          >
-            <View style={styles.noteAvatarWrapper}>
-              <View style={styles.noteSpeechBubble}>
-                <Text style={styles.noteSpeechText} numberOfLines={2}>
-                  || Tamara..{'\n'}Geeta Jhal.. 😊
-                </Text>
-              </View>
-              <Avatar
-                uri="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150"
-                name="Manglesh"
-                size={68}
-                showStoryRing={true}
-              />
-            </View>
-            <Text style={styles.noteUserName} numberOfLines={1}>
-              मंगलेश सिंह मौर्य 🔱
-            </Text>
-          </TouchableOpacity>
-
-          {/* Friend Note 2: Sumit */}
-          <TouchableOpacity
-            style={styles.noteItem}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('SearchUsers')}
-          >
-            <View style={styles.noteAvatarWrapper}>
-              <View style={styles.noteSpeechBubble}>
-                <Text style={styles.noteSpeechText} numberOfLines={2}>
-                  || Legacy{'\n'}Vikram Sar...
-                </Text>
-              </View>
-              <Avatar
-                uri="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150"
-                name="Sumit"
-                size={68}
-                showStoryRing={true}
-              />
-            </View>
-            <Text style={styles.noteUserName} numberOfLines={1}>
-              SUMIT 🔱
-            </Text>
-          </TouchableOpacity>
-
-          {/* Dynamic contacts */}
+          {/* Dynamic contacts from real database chats */}
           {noteContacts.map((contact) => (
             <TouchableOpacity
               key={contact.user._id}
@@ -369,6 +332,67 @@ export const ChatsListScreen = ({ navigation }) => {
           contentContainerStyle={styles.listContent}
         />
       )}
+
+      {/* Note Creation / Edit Modal */}
+      <Modal
+        visible={showNoteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowNoteModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowNoteModal(false)}
+        >
+          <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+            <Text style={styles.modalTitle}>Share a note</Text>
+            <Text style={styles.modalSubtitle}>Friends can see this for 24 hours.</Text>
+
+            <TextInput
+              value={noteInput}
+              onChangeText={setNoteInput}
+              placeholder="Share what's on your mind..."
+              placeholderTextColor="#737373"
+              style={styles.modalInput}
+              maxLength={60}
+              autoFocus
+            />
+            <Text style={styles.charCount}>{noteInput.length}/60</Text>
+
+            <View style={styles.modalActions}>
+              {myNote ? (
+                <TouchableOpacity
+                  style={styles.clearNoteBtn}
+                  onPress={() => {
+                    setMyNote('');
+                    setShowNoteModal(false);
+                  }}
+                >
+                  <Text style={styles.clearNoteText}>Delete</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.cancelNoteBtn}
+                onPress={() => setShowNoteModal(false)}
+              >
+                <Text style={styles.cancelNoteText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.saveNoteBtn}
+                onPress={() => {
+                  setMyNote(noteInput.trim());
+                  setShowNoteModal(false);
+                }}
+              >
+                <Text style={styles.saveNoteText}>Share</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -611,5 +635,96 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 13.5,
+  },
+  notePlusBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#0095F6',
+    borderWidth: 2,
+    borderColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#1C1C1E',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+  },
+  modalTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    color: '#8E8E8E',
+    fontSize: 12.5,
+    marginBottom: 16,
+  },
+  modalInput: {
+    backgroundColor: '#121212',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: '#FFFFFF',
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  charCount: {
+    color: '#737373',
+    fontSize: 11,
+    textAlign: 'right',
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  clearNoteBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginRight: 'auto',
+  },
+  clearNoteText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  cancelNoteBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  cancelNoteText: {
+    color: '#8E8E8E',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  saveNoteBtn: {
+    backgroundColor: '#0095F6',
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  saveNoteText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

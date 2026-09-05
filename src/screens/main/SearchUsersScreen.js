@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,42 +7,48 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  ScrollView,
   Dimensions,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../theme/colors';
 import { searchUsers } from '../../api/user';
 import { accessOrCreateChat } from '../../api/chat';
+import { getFeedPosts } from '../../api/post';
 import { Avatar } from '../../components/Avatar';
 import { useSocket } from '../../context/SocketContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (width - 4) / 3;
 
-const EXPLORE_ITEMS = [
-  { id: 'ex_1', views: '1.1M', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500', isVideo: true },
-  { id: 'ex_2', views: '691K', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500', isVideo: true },
-  { id: 'ex_3', views: '7.9M', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500', isVideo: true },
-  { id: 'ex_4', views: '1M', image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500', isVideo: true },
-  { id: 'ex_5', views: '289K', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500', isVideo: false },
-  { id: 'ex_6', views: '171K', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500', isVideo: true },
-  { id: 'ex_7', views: '261K', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500', isVideo: true },
-  { id: 'ex_8', views: '3.8M', image: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=500', isVideo: false },
-  { id: 'ex_9', views: '884K', image: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=500', isVideo: true },
-  { id: 'ex_10', views: '190K', image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=500', isVideo: true },
-  { id: 'ex_11', views: '1.7M', image: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=500', isVideo: true },
-  { id: 'ex_12', views: '379K', image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500', isVideo: false },
-];
-
 export const SearchUsersScreen = ({ navigation }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
+  const [explorePosts, setExplorePosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [startingChatId, setStartingChatId] = useState(null);
   const { isUserOnline } = useSocket();
+
+  const fetchExplorePosts = useCallback(async () => {
+    try {
+      const res = await getFeedPosts(1, 40);
+      if (res && res.data && res.data.length > 0) {
+        setExplorePosts(res.data);
+      } else {
+        setExplorePosts([]);
+      }
+    } catch (e) {
+      console.log('Error fetching explore posts:', e.message);
+      setExplorePosts([]);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchExplorePosts();
+    }, [fetchExplorePosts])
+  );
 
   useEffect(() => {
     if (!query.trim()) {
@@ -128,16 +134,28 @@ export const SearchUsersScreen = ({ navigation }) => {
   };
 
   const renderExploreItem = ({ item }) => {
+    const isVideo = item.mediaType === 'video' || item.isReel;
     return (
       <TouchableOpacity
         style={styles.exploreItemWrapper}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate('ReelsTab')}
+        onPress={() => {
+          if (isVideo) {
+            navigation.navigate('ReelsTab');
+          } else {
+            navigation.navigate('HomeTab');
+          }
+        }}
       >
-        <Image source={{ uri: item.image }} style={styles.exploreImage} resizeMode="cover" />
+        <Image source={{ uri: item.mediaUrl }} style={styles.exploreImage} resizeMode="cover" />
+        {isVideo && (
+          <View style={styles.videoBadge}>
+            <Ionicons name="play" size={14} color="#FFFFFF" />
+          </View>
+        )}
         <View style={styles.viewBadge}>
-          <Ionicons name="eye-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
-          <Text style={styles.viewBadgeText}>{item.views}</Text>
+          <Ionicons name="heart" size={12} color="#FFFFFF" style={{ marginRight: 4 }} />
+          <Text style={styles.viewBadgeText}>{item.likesCount || item.likes?.length || 0}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -145,13 +163,13 @@ export const SearchUsersScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* 1. Search with Meta AI Input Bar matching Screenshot 2 */}
+      {/* 1. Search Bar */}
       <View style={styles.searchBarContainer}>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={20} color="#8E8E8E" style={{ marginRight: 8 }} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search with Meta AI"
+            placeholder="Search users or friends..."
             placeholderTextColor="#8E8E8E"
             value={query}
             onChangeText={setQuery}
@@ -166,13 +184,15 @@ export const SearchUsersScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* 2. Body Content: Search Results OR Trending Explore Grid */}
+      {/* 2. Body: Search Results vs Real Explore Posts Grid */}
       {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#0095F6" />
         </View>
       ) : query.trim() ? (
+        /* Single column list with distinct key */
         <FlatList
+          key="search-users-list-single"
           data={results}
           keyExtractor={(item) => item._id}
           renderItem={renderUserItem}
@@ -186,14 +206,24 @@ export const SearchUsersScreen = ({ navigation }) => {
           }
         />
       ) : (
-        /* Explore 3-Column Grid matching Screenshot 2 */
+        /* 3-Column Explore Grid of REAL database posts with distinct key */
         <FlatList
-          data={EXPLORE_ITEMS}
-          keyExtractor={(item) => item.id}
+          key="explore-real-posts-grid-3"
+          data={explorePosts}
+          keyExtractor={(item) => item._id}
           renderItem={renderExploreItem}
           numColumns={3}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.exploreGridContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="compass-outline" size={56} color="#333333" />
+              <Text style={styles.emptyText}>No posts yet on FOMO</Text>
+              <Text style={styles.emptySubtext}>
+                Photos and reels shared on FOMO will appear here.
+              </Text>
+            </View>
+          }
         />
       )}
     </SafeAreaView>
@@ -226,7 +256,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   exploreGridContent: {
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   exploreItemWrapper: {
     width: GRID_ITEM_WIDTH,
@@ -239,21 +269,37 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  videoBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   viewBadge: {
     position: 'absolute',
     bottom: 6,
     left: 6,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 8,
   },
   viewBadgeText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   listContent: {
     paddingHorizontal: 16,
@@ -263,7 +309,7 @@ const styles = StyleSheet.create({
   userRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 0.5,
     borderBottomColor: '#1A1A1A',
   },
@@ -273,41 +319,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   userNameText: {
-    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#FFFFFF',
     marginBottom: 2,
   },
   userSubtext: {
-    color: '#8E8E8E',
     fontSize: 13,
+    color: '#8E8E8E',
   },
   chatButton: {
     backgroundColor: '#0095F6',
     paddingHorizontal: 16,
     paddingVertical: 7,
     borderRadius: 8,
-    minWidth: 70,
+    minWidth: 68,
     alignItems: 'center',
   },
   chatButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    fontSize: 13.5,
+    fontWeight: '700',
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 80,
+    paddingHorizontal: 32,
   },
   emptyText: {
-    color: '#737373',
-    fontSize: 15,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
     marginTop: 12,
+  },
+  emptySubtext: {
+    color: '#737373',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 4,
   },
 });

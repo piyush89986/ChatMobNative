@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,61 +9,86 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { createPost, createStory, uploadMedia } from '../../api/post';
 
-export const CreatePostScreen = ({ navigation }) => {
+const { width } = Dimensions.get('window');
+
+export const CreatePostScreen = ({ navigation, route }) => {
+  const initialType = route?.params?.initialType || 'post'; // 'post' | 'reel' | 'story'
+  const [postType, setPostType] = useState(initialType);
   const [selectedImage, setSelectedImage] = useState(null);
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState('');
-  const [postType, setPostType] = useState('post'); // 'post' | 'story'
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (route?.params?.initialType) {
+      setPostType(route.params.initialType);
+    }
+  }, [route?.params?.initialType]);
 
   const handlePickImage = async () => {
     try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Gallery permission is required to select photos and videos.');
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images', 'videos'],
-        allowsEditing: true,
-        quality: 0.5,
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsEditing: false, // Disabling native crop prevents Android video crashes and preserves full resolution
+        quality: 0.8,
         base64: true,
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
+      if (!result.canceled && result.assets && result.assets.length > 0) {
         setSelectedImage(result.assets[0]);
       }
     } catch (e) {
       console.log('Error picking image:', e);
+      Alert.alert('Error', 'Could not open media library: ' + e.message);
     }
   };
 
   const handleLaunchCamera = async () => {
     try {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert('Permission Denied', 'Camera permission required.');
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Camera permission is required.');
         return;
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images', 'videos'],
-        quality: 0.5,
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        quality: 0.8,
         base64: true,
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
+      if (!result.canceled && result.assets && result.assets.length > 0) {
         setSelectedImage(result.assets[0]);
       }
     } catch (e) {
       console.log('Error launching camera:', e);
+      Alert.alert('Error', 'Could not open camera: ' + e.message);
     }
   };
 
+  const isVideo = selectedImage && (
+    selectedImage.type === 'video' ||
+    (selectedImage.mimeType && selectedImage.mimeType.startsWith('video/')) ||
+    (selectedImage.uri && selectedImage.uri.match(/\.(mp4|mov|avi|mkv|webm)$/i))
+  );
+
   const handleShare = async () => {
     if (!selectedImage) {
-      Alert.alert('Photo Required', 'Please select a photo or video to share.');
+      Alert.alert('Media Required', 'Please choose a photo or video to share.');
       return;
     }
 
@@ -72,14 +97,15 @@ export const CreatePostScreen = ({ navigation }) => {
       let uploadedUrl = null;
       try {
         const formData = new FormData();
-        const filename = selectedImage.uri.split('/').pop() || `upload_${Date.now()}.jpg`;
+        const filename = selectedImage.fileName || selectedImage.uri.split('/').pop() || `fomo_${Date.now()}.jpg`;
         const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : (selectedImage.mimeType || 'image/jpeg');
+        const ext = match ? match[1].toLowerCase() : (isVideo ? 'mp4' : 'jpg');
+        const mimeType = selectedImage.mimeType || (isVideo ? `video/${ext}` : `image/${ext}`);
 
         formData.append('media', {
-          uri: selectedImage.uri,
+          uri: Platform.OS === 'android' ? selectedImage.uri : selectedImage.uri.replace('file://', ''),
           name: filename,
-          type: type,
+          type: mimeType,
         });
 
         const uploadRes = await uploadMedia(formData);
@@ -87,22 +113,34 @@ export const CreatePostScreen = ({ navigation }) => {
           uploadedUrl = uploadRes.data.url;
         }
       } catch (uploadErr) {
-        console.log('Direct upload error, trying base64 fallback:', uploadErr.message);
+        console.log('UploadMedia error, falling back to base64 or URI:', uploadErr.message);
       }
 
       const finalMediaUrl = uploadedUrl || (selectedImage.base64
-        ? `data:${selectedImage.mimeType || 'image/jpeg'};base64,${selectedImage.base64}`
+        ? `data:${selectedImage.mimeType || (isVideo ? 'video/mp4' : 'image/jpeg')};base64,${selectedImage.base64}`
         : selectedImage.uri);
 
       if (postType === 'story') {
         await createStory({
           mediaUrl: finalMediaUrl,
+          mediaType: isVideo ? 'video' : 'image',
           caption: caption.trim(),
         });
         Alert.alert('Success', 'Added to your FOMO story!');
+      } else if (postType === 'reel') {
+        await createPost({
+          mediaUrl: finalMediaUrl,
+          mediaType: isVideo ? 'video' : 'video',
+          isReel: true,
+          caption: caption.trim(),
+          location: location.trim(),
+        });
+        Alert.alert('Success', 'Reel shared to FOMO feed!');
       } else {
         await createPost({
           mediaUrl: finalMediaUrl,
+          mediaType: isVideo ? 'video' : 'image',
+          isReel: false,
           caption: caption.trim(),
           location: location.trim(),
         });
@@ -112,24 +150,30 @@ export const CreatePostScreen = ({ navigation }) => {
       navigation.goBack();
     } catch (err) {
       console.log('Share error:', err);
-      Alert.alert('Upload Failed', err.message || 'Could not share post. Please check internet connection.');
+      Alert.alert('Upload Failed', err.message || 'Could not share. Please check backend connection.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getHeaderTitle = () => {
+    if (postType === 'story') return 'Add to Story';
+    if (postType === 'reel') return 'New Reel';
+    return 'New Post';
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Top Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="close" size={26} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>New Post</Text>
+        <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
 
         <TouchableOpacity
-          style={[styles.shareBtn, !selectedImage && styles.shareBtnDisabled]}
+          style={[styles.shareBtn, (!selectedImage || loading) && styles.shareBtnDisabled]}
           onPress={handleShare}
           disabled={!selectedImage || loading}
         >
@@ -142,7 +186,7 @@ export const CreatePostScreen = ({ navigation }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Post vs Story toggle */}
+        {/* Post Type Selector: 3 Tabs (Feed Post, Reel, Story) */}
         <View style={styles.typeSwitcher}>
           <TouchableOpacity
             style={[styles.typeBtn, postType === 'post' && styles.typeBtnActive]}
@@ -152,6 +196,16 @@ export const CreatePostScreen = ({ navigation }) => {
               Feed Post
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.typeBtn, postType === 'reel' && styles.typeBtnActive]}
+            onPress={() => setPostType('reel')}
+          >
+            <Text style={[styles.typeBtnText, postType === 'reel' && styles.typeBtnTextActive]}>
+              Reel
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.typeBtn, postType === 'story' && styles.typeBtnActive]}
             onPress={() => setPostType('story')}
@@ -162,27 +216,69 @@ export const CreatePostScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Media Preview or Picker Box */}
+        {/* Media Preview Box when media is selected */}
         {selectedImage ? (
           <View style={styles.previewBox}>
-            <Image source={{ uri: selectedImage.uri }} style={styles.previewImage} resizeMode="cover" />
-            <TouchableOpacity style={styles.changeMediaBtn} onPress={handlePickImage}>
-              <Ionicons name="refresh" size={18} color="#FFFFFF" />
-              <Text style={styles.changeMediaText}>Change</Text>
-            </TouchableOpacity>
+            {isVideo ? (
+              <View style={styles.videoPreviewContainer}>
+                <View style={styles.videoIconCircle}>
+                  <Ionicons name="play" size={36} color="#FFFFFF" />
+                </View>
+                <Text style={styles.videoLabel}>Video Selected</Text>
+                <Text style={styles.videoSublabel} numberOfLines={1}>
+                  {selectedImage.fileName || 'Video ready for upload'}
+                </Text>
+              </View>
+            ) : (
+              <Image
+                source={{ uri: selectedImage.uri }}
+                style={styles.previewImage}
+                resizeMode="cover"
+              />
+            )}
+
+            {/* Media Action Overlay Badges */}
+            <View style={styles.previewOverlayActions}>
+              <TouchableOpacity style={styles.previewActionPill} onPress={handlePickImage}>
+                <Ionicons name="images" size={16} color="#FFFFFF" />
+                <Text style={styles.previewActionText}>Change</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.previewActionPill, styles.removePill]}
+                onPress={() => setSelectedImage(null)}
+              >
+                <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                <Text style={[styles.previewActionText, { color: '#FF3B30' }]}>Remove</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
+          /* High-Contrast Vibrant Media Picker Box */
           <View style={styles.pickerBox}>
-            <Ionicons name="images-outline" size={54} color="#555555" />
-            <Text style={styles.pickerTitle}>Select photo or video</Text>
+            <View style={styles.pickerIconHalo}>
+              <Ionicons
+                name={postType === 'reel' ? 'play-circle-outline' : postType === 'story' ? 'color-palette-outline' : 'images-outline'}
+                size={48}
+                color="#0095F6"
+              />
+            </View>
+            <Text style={styles.pickerTitle}>
+              {postType === 'reel' ? 'Choose Video for Reel' : 'Select Photo or Video'}
+            </Text>
+            <Text style={styles.pickerSubtitle}>
+              Share memories with your friends on FOMO
+            </Text>
+
             <View style={styles.pickerActions}>
-              <TouchableOpacity style={styles.pickerBtn} onPress={handlePickImage}>
-                <Ionicons name="images" size={18} color="#FFFFFF" />
-                <Text style={styles.pickerBtnText}>Gallery</Text>
+              <TouchableOpacity style={styles.primaryPickerBtn} onPress={handlePickImage} activeOpacity={0.8}>
+                <Ionicons name="images" size={20} color="#FFFFFF" />
+                <Text style={styles.primaryPickerBtnText}>Choose from Gallery</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.pickerBtn, styles.cameraBtn]} onPress={handleLaunchCamera}>
-                <Ionicons name="camera" size={18} color="#FFFFFF" />
-                <Text style={styles.pickerBtnText}>Camera</Text>
+
+              <TouchableOpacity style={styles.secondaryPickerBtn} onPress={handleLaunchCamera} activeOpacity={0.8}>
+                <Ionicons name="camera" size={20} color="#FFFFFF" />
+                <Text style={styles.secondaryPickerBtnText}>Open Camera</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -193,7 +289,13 @@ export const CreatePostScreen = ({ navigation }) => {
           <TextInput
             value={caption}
             onChangeText={setCaption}
-            placeholder="Write a caption..."
+            placeholder={
+              postType === 'story'
+                ? 'Add text to your story...'
+                : postType === 'reel'
+                ? 'Write a reel caption, #tags...'
+                : 'Write a caption...'
+            }
             placeholderTextColor="#737373"
             style={styles.captionInput}
             multiline
@@ -201,10 +303,10 @@ export const CreatePostScreen = ({ navigation }) => {
           />
         </View>
 
-        {/* Location Input */}
-        {postType === 'post' && (
+        {/* Location Input (For posts and reels) */}
+        {postType !== 'story' && (
           <View style={styles.rowItem}>
-            <Ionicons name="location-outline" size={22} color="#FFFFFF" />
+            <Ionicons name="location-outline" size={22} color="#0095F6" />
             <TextInput
               value={location}
               onChangeText={setLocation}
@@ -231,49 +333,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#262626',
+    borderBottomColor: '#1F1F1F',
   },
   headerBtn: {
     padding: 4,
   },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
+    letterSpacing: -0.2,
   },
   shareBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   shareBtnDisabled: {
-    opacity: 0.4,
+    opacity: 0.35,
   },
   shareBtnText: {
     color: '#0095F6',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 40,
   },
   typeSwitcher: {
     flexDirection: 'row',
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#1C1C1E',
     borderRadius: 12,
     padding: 3,
-    marginBottom: 16,
+    marginBottom: 18,
   },
   typeBtn: {
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 9,
   },
   typeBtnActive: {
     backgroundColor: '#303030',
   },
   typeBtnText: {
-    color: '#737373',
+    color: '#8E8E8E',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -282,74 +387,143 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   pickerBox: {
-    height: 240,
+    minHeight: 250,
     backgroundColor: '#121212',
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 18,
+    borderWidth: 1.5,
     borderColor: '#262626',
+    borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
+    padding: 20,
+    marginBottom: 18,
+  },
+  pickerIconHalo: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(0, 149, 246, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   pickerTitle: {
-    color: '#A8A8A8',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  pickerSubtitle: {
+    color: '#737373',
+    fontSize: 12.5,
+    marginBottom: 18,
+    textAlign: 'center',
   },
   pickerActions: {
-    flexDirection: 'row',
-    gap: 12,
+    width: '100%',
+    gap: 10,
   },
-  pickerBtn: {
+  primaryPickerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#262626',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#0095F6',
+    paddingVertical: 12,
     borderRadius: 12,
   },
-  cameraBtn: {
-    backgroundColor: '#0095F6',
-  },
-  pickerBtnText: {
+  primaryPickerBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14.5,
+    fontWeight: '700',
+  },
+  secondaryPickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#262626',
+    paddingVertical: 11,
+    borderRadius: 12,
+  },
+  secondaryPickerBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
   },
   previewBox: {
     width: '100%',
-    height: 260,
+    height: 300,
     borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 18,
+    backgroundColor: '#1C1C1E',
     position: 'relative',
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   previewImage: {
     width: '100%',
     height: '100%',
   },
-  changeMediaBtn: {
+  videoPreviewContainer: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0A0A0A',
+    padding: 20,
+  },
+  videoIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#0095F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  videoLabel: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  videoSublabel: {
+    color: '#8E8E8E',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  previewOverlayActions: {
     position: 'absolute',
     bottom: 12,
+    left: 12,
     right: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  previewActionPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 16,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  changeMediaText: {
+  removePill: {
+    backgroundColor: 'rgba(30, 0, 0, 0.8)',
+    borderColor: 'rgba(255, 59, 48, 0.4)',
+  },
+  previewActionText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '600',
   },
   inputSection: {
-    backgroundColor: '#121212',
-    borderRadius: 12,
+    backgroundColor: '#141414',
+    borderRadius: 14,
     padding: 14,
     marginBottom: 14,
     borderWidth: 1,
@@ -357,24 +531,25 @@ const styles = StyleSheet.create({
   },
   captionInput: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 14.5,
     minHeight: 60,
     textAlignVertical: 'top',
   },
   rowItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#121212',
+    backgroundColor: '#141414',
+    borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 12,
-    gap: 12,
     borderWidth: 1,
     borderColor: '#262626',
+    gap: 10,
   },
   rowInput: {
     flex: 1,
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 14.5,
+    paddingVertical: 0,
   },
 });

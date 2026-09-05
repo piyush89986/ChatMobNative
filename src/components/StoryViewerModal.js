@@ -10,8 +10,9 @@ import {
   Dimensions,
   Animated,
   TextInput,
+  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from './Avatar';
 
@@ -20,14 +21,25 @@ const { width, height } = Dimensions.get('window');
 export const StoryViewerModal = ({
   visible,
   story,
+  stories = [],
+  initialIndex = 0,
   onClose,
   onReply,
 }) => {
+  const insets = useSafeAreaInsets();
+  const storyList = stories && stories.length > 0 ? stories : (story ? [story] : []);
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [replyText, setReplyText] = useState('');
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!visible) return;
+    if (visible) {
+      setCurrentIndex(initialIndex || 0);
+    }
+  }, [visible, initialIndex, story]);
+
+  useEffect(() => {
+    if (!visible || storyList.length === 0) return;
 
     progressAnim.setValue(0);
     const animation = Animated.timing(progressAnim, {
@@ -38,17 +50,34 @@ export const StoryViewerModal = ({
 
     animation.start(({ finished }) => {
       if (finished) {
-        onClose();
+        handleNext();
       }
     });
 
     return () => animation.stop();
-  }, [visible, story]);
+  }, [visible, currentIndex, storyList.length]);
 
-  if (!visible || !story) return null;
+  if (!visible || storyList.length === 0) return null;
 
-  const authorName = story.user?.user_name || story.authorName || 'User';
-  const authorAvatar = story.user?.avatar || story.avatar;
+  const currentStory = storyList[currentIndex] || storyList[0];
+  const authorName = currentStory.user?.user_name || currentStory.authorName || 'User';
+  const authorAvatar = currentStory.user?.avatar || currentStory.avatar;
+
+  const handleNext = () => {
+    if (currentIndex < storyList.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+    } else {
+      onClose();
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex((prev) => prev - 1);
+    } else {
+      progressAnim.setValue(0);
+    }
+  };
 
   return (
     <Modal
@@ -61,83 +90,98 @@ export const StoryViewerModal = ({
       <View style={styles.container}>
         {/* Story Background Image */}
         <Image
-          source={{ uri: story.mediaUrl }}
+          source={{ uri: currentStory.mediaUrl }}
           style={styles.storyImage}
           resizeMode="cover"
         />
 
-        {/* Touch zones: Left (back) and Right (advance) */}
+        {/* Touch zones: Left 40% (Previous) and Right 60% (Next) */}
         <View style={styles.touchOverlay}>
           <TouchableOpacity
             style={styles.touchLeft}
             activeOpacity={1}
-            onPress={() => onClose()}
+            onPress={handlePrev}
           />
           <TouchableOpacity
             style={styles.touchRight}
             activeOpacity={1}
-            onPress={() => onClose()}
+            onPress={handleNext}
           />
         </View>
 
-        <SafeAreaView style={styles.contentOverlay} edges={['top', 'bottom', 'left', 'right']}>
-          {/* Top Progress Bar */}
-          <View style={styles.progressBarContainer}>
-            <View style={styles.progressBarBg}>
-              <Animated.View
-                style={[
-                  styles.progressBarFill,
-                  {
-                    width: progressAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0%', '100%'],
-                    }),
-                  },
-                ]}
-              />
-            </View>
+        {/* Top Section: Strictly Pinned at the Very Top */}
+        <View style={[styles.topSection, { paddingTop: Math.max(insets.top, 14) }]}>
+          {/* Progress Bars (Multi-segment Instagram style) */}
+          <View style={styles.progressContainer}>
+            {storyList.map((_, idx) => (
+              <View key={`prog_${idx}`} style={styles.progressBarBg}>
+                {idx === currentIndex ? (
+                  <Animated.View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: progressAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0%', '100%'],
+                        }),
+                      },
+                    ]}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.progressBarFill,
+                      { width: idx < currentIndex ? '100%' : '0%' },
+                    ]}
+                  />
+                )}
+              </View>
+            ))}
           </View>
 
-          {/* User Info Header */}
+          {/* User Info Header: Directly below progress bar */}
           <View style={styles.header}>
             <Avatar uri={authorAvatar} name={authorName} size={36} showStoryRing={false} />
-            <Text style={styles.username}>{authorName}</Text>
+            <Text style={styles.username} numberOfLines={1}>
+              {authorName}
+            </Text>
             <Text style={styles.timeText}>1h</Text>
 
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-              <Ionicons name="close" size={26} color="#FFFFFF" />
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close" size={28} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
+        </View>
 
-          {/* Bottom Reply Bar */}
-          <View style={styles.bottomBar}>
-            <TextInput
-              value={replyText}
-              onChangeText={setReplyText}
-              placeholder={`Reply to ${authorName}...`}
-              placeholderTextColor="#B0B0B0"
-              style={styles.replyInput}
-            />
-            <TouchableOpacity
-              style={styles.heartBtn}
-              onPress={() => {
-                if (onReply) onReply('❤️');
-                onClose();
-              }}
-            >
-              <Ionicons name="heart-outline" size={28} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.sendBtn}
-              onPress={() => {
-                if (replyText.trim() && onReply) onReply(replyText.trim());
-                onClose();
-              }}
-            >
-              <Ionicons name="paper-plane-outline" size={26} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
+        {/* Bottom Section: Reply Bar Pinned to Bottom */}
+        <View style={[styles.bottomSection, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <TextInput
+            value={replyText}
+            onChangeText={setReplyText}
+            placeholder={`Reply to ${authorName}...`}
+            placeholderTextColor="#B0B0B0"
+            style={styles.replyInput}
+          />
+          <TouchableOpacity
+            style={styles.heartBtn}
+            onPress={() => {
+              if (onReply) onReply('❤️');
+              handleNext();
+            }}
+          >
+            <Ionicons name="heart-outline" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.sendBtn}
+            onPress={() => {
+              if (replyText.trim() && onReply) onReply(replyText.trim());
+              setReplyText('');
+              handleNext();
+            }}
+          >
+            <Ionicons name="paper-plane-outline" size={26} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
     </Modal>
   );
@@ -158,30 +202,36 @@ const styles = StyleSheet.create({
   },
   touchOverlay: {
     position: 'absolute',
-    top: 60,
-    bottom: 80,
+    top: 90,
+    bottom: 90,
     left: 0,
     right: 0,
     flexDirection: 'row',
+    zIndex: 5,
   },
   touchLeft: {
-    flex: 1,
-  },
-  touchRight: {
     flex: 2,
   },
-  contentOverlay: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 16,
+  touchRight: {
+    flex: 3,
   },
-  progressBarContainer: {
-    paddingHorizontal: 4,
-    marginBottom: 8,
+  topSection: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    paddingBottom: 10,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 10,
   },
   progressBarBg: {
+    flex: 1,
     height: 2.5,
     backgroundColor: 'rgba(255, 255, 255, 0.35)',
     borderRadius: 2,
@@ -195,36 +245,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 4,
   },
   username: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+    maxWidth: width * 0.55,
   },
   timeText: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 255, 255, 0.75)',
     fontSize: 12,
   },
   closeBtn: {
     marginLeft: 'auto',
     padding: 4,
   },
-  bottomBar: {
+  bottomSection: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 4,
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   replyInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
+    borderColor: 'rgba(255, 255, 255, 0.65)',
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 8,
     color: '#FFFFFF',
     fontSize: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   heartBtn: {
     padding: 4,

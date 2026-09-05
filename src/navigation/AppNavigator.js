@@ -1,11 +1,22 @@
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { AuthNavigator } from './AuthNavigator';
 import { MainNavigator } from './MainNavigator';
 import { Ionicons } from '@expo/vector-icons';
+
+const customDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: '#000000',
+    card: '#000000',
+    border: '#1F1F1F',
+    text: '#FFFFFF',
+  },
+};
 
 export const AppNavigator = () => {
   const { token, isLoading } = useAuth();
@@ -32,7 +43,7 @@ export const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={customDarkTheme}>
       {token ? <MainNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

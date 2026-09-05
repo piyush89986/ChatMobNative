@@ -381,8 +381,8 @@ export const ChatDetailScreen = ({ route, navigation }) => {
   return (
     <SafeAreaView style={styles.safeContainer} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 25}
         style={styles.container}
       >
         {/* 1. Instagram Direct Header */}

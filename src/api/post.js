@@ -6,9 +6,7 @@ export const getFeedPosts = async (page = 1, limit = 20) => {
 
 export const uploadMedia = async (formData) => {
   return await apiClient.post('/posts/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+    transformRequest: (data) => data,
   });
 };
 

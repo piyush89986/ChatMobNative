@@ -21,6 +21,7 @@ export const BottomTabNavigator = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
+        sceneContainerStyle: { backgroundColor: '#000000' },
         tabBarStyle: [
           styles.tabBar,
           {

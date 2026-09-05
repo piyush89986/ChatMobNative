@@ -21,72 +21,6 @@ import { StoryViewerModal } from '../../components/StoryViewerModal';
 import { getFeedPosts, toggleLike, getStories } from '../../api/post';
 import { useFocusEffect } from '@react-navigation/native';
 
-// Fallback high-quality curated posts if user hasn't posted anything yet
-const FALLBACK_POSTS = [
-  {
-    _id: 'seed_post_1',
-    author: {
-      _id: 'seed_user_1',
-      user_name: 'caaiitgandhinagar_pg',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-    },
-    mediaUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800',
-    mediaType: 'image',
-    caption: 'Walked in to upskill. Walked out as an AI Developer through IIT Gandhinagar residential program! 🚀✨',
-    location: 'IIT Gandhinagar',
-    likesCount: 33,
-    commentsCount: 4,
-    comments: [
-      {
-        _id: 'c1',
-        user: { user_name: 'arun_dev', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100' },
-        text: 'Incredible journey! Congrats man! 🎉',
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    isLikedByMe: false,
-    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-  {
-    _id: 'seed_post_2',
-    author: {
-      _id: 'seed_user_2',
-      user_name: 'maisamayhoon',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    },
-    mediaUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800',
-    mediaType: 'image',
-    caption: 'Sunset in the Himalayas. Time stops here. 🏔️🌅 #nature #peace #travel',
-    location: 'Manali, Himachal Pradesh',
-    likesCount: 142,
-    commentsCount: 9,
-    comments: [],
-    isLikedByMe: true,
-    createdAt: new Date(Date.now() - 3600000 * 6).toISOString(),
-  },
-];
-
-const FALLBACK_STORIES = [
-  {
-    _id: 's1',
-    user: { user_name: 'vikas_2607__', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150' },
-    mediaUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800',
-    caption: 'Weekend coding vibe ☕',
-  },
-  {
-    _id: 's2',
-    user: { user_name: 'maisamayhoon', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
-    mediaUrl: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800',
-    caption: 'On the road again 🚗',
-  },
-  {
-    _id: 's3',
-    user: { user_name: 'lakshyamal', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150' },
-    mediaUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800',
-    caption: 'Starlit sky tonight ✨',
-  },
-];
-
 export const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
@@ -94,8 +28,9 @@ export const HomeScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Active Story Viewer Modal
-  const [selectedStory, setSelectedStory] = useState(null);
+  // Active Stories for Lightbox Modal
+  const [activeStoryList, setActiveStoryList] = useState([]);
+  const [activeStoryIndex, setActiveStoryIndex] = useState(0);
 
   // Active Comments Modal
   const [commentPost, setCommentPost] = useState(null);
@@ -103,25 +38,25 @@ export const HomeScreen = ({ navigation }) => {
   const fetchFeed = useCallback(async () => {
     try {
       const [postRes, storyRes] = await Promise.allSettled([
-        getFeedPosts(1, 20),
+        getFeedPosts(1, 30),
         getStories(),
       ]);
 
-      if (postRes.status === 'fulfilled' && postRes.value?.data && postRes.value.data.length > 0) {
+      if (postRes.status === 'fulfilled' && postRes.value?.data) {
         setPosts(postRes.value.data);
       } else {
-        setPosts(FALLBACK_POSTS);
+        setPosts([]);
       }
 
-      if (storyRes.status === 'fulfilled' && storyRes.value?.data && storyRes.value.data.length > 0) {
+      if (storyRes.status === 'fulfilled' && storyRes.value?.data) {
         setStories(storyRes.value.data);
       } else {
-        setStories(FALLBACK_STORIES);
+        setStories([]);
       }
     } catch (err) {
       console.log('Error fetching feed:', err.message);
-      setPosts(FALLBACK_POSTS);
-      setStories(FALLBACK_STORIES);
+      setPosts([]);
+      setStories([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -147,6 +82,39 @@ export const HomeScreen = ({ navigation }) => {
     }
   };
 
+  // Separate current user's stories from other users' stories
+  const myStories = stories.filter(
+    (s) => s.user?._id === user?._id || s.user === user?._id
+  );
+
+  // Group other users' stories by user ID
+  const otherStoriesByUser = {};
+  stories
+    .filter((s) => s.user?._id !== user?._id && s.user !== user?._id)
+    .forEach((s) => {
+      const authorId = s.user?._id || s.user;
+      if (!otherStoriesByUser[authorId]) {
+        otherStoriesByUser[authorId] = [];
+      }
+      otherStoriesByUser[authorId].push(s);
+    });
+
+  const otherUsersList = Object.values(otherStoriesByUser);
+
+  const handleOpenMyStory = () => {
+    if (myStories.length > 0) {
+      setActiveStoryList(myStories);
+      setActiveStoryIndex(0);
+    } else {
+      navigation.navigate('CreatePost', { initialType: 'story' });
+    }
+  };
+
+  const handleOpenUserStories = (userStories) => {
+    setActiveStoryList(userStories);
+    setActiveStoryIndex(0);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* 1. FOMO Home Top Bar */}
@@ -160,18 +128,17 @@ export const HomeScreen = ({ navigation }) => {
           <Ionicons name="add-circle-outline" size={27} color="#FFFFFF" />
         </TouchableOpacity>
 
-        {/* FOMO Script Brand Title */}
-        <Text style={styles.logoText}>FOMO</Text>
+        {/* FOMO Brand Title */}
+        <Text style={styles.brandTitle}>FOMO</Text>
 
-        {/* Right Icons: Notifications (Heart) & Direct Messages (Paperplane) */}
-        <View style={styles.topRightActions}>
+        {/* Right Top Actions (Heart + Messenger) */}
+        <View style={styles.topBarRight}>
           <TouchableOpacity
             style={styles.topIconBtn}
             onPress={() => navigation.navigate('Notifications')}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="heart-outline" size={26} color="#FFFFFF" />
-            <View style={styles.notificationBadge} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -179,15 +146,18 @@ export const HomeScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('DirectMessages')}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="paper-plane-outline" size={24} color="#FFFFFF" />
+            <View style={{ position: 'relative' }}>
+              <Ionicons name="paper-plane-outline" size={25} color="#FFFFFF" />
+              <View style={styles.unreadBadgeDot} />
+            </View>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* 2. Main Feed with Stories Tray at top */}
+      {/* 2. Main Feed with Real Stories Tray Header */}
       {loading ? (
-        <View style={styles.centerLoader}>
-          <ActivityIndicator size="small" color="#FFFFFF" />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="small" color="#0095F6" />
         </View>
       ) : (
         <FlatList
@@ -211,47 +181,73 @@ export const HomeScreen = ({ navigation }) => {
                 contentContainerStyle={styles.storiesScroll}
               >
                 {/* Your Story item */}
-                <TouchableOpacity
-                  style={styles.storyItem}
-                  onPress={() => navigation.navigate('CreatePost')}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.myStoryWrapper}>
+                <View style={styles.storyItem}>
+                  <TouchableOpacity
+                    onPress={handleOpenMyStory}
+                    activeOpacity={0.8}
+                    style={styles.myStoryWrapper}
+                  >
                     <Avatar
                       uri={user?.avatar}
                       name={user?.user_name || 'Me'}
                       size={68}
-                      showStoryRing={false}
+                      showStoryRing={myStories.length > 0}
                     />
-                    <View style={styles.myStoryPlus}>
-                      <Ionicons name="add" size={13} color="#FFFFFF" />
-                    </View>
-                  </View>
+                    <TouchableOpacity
+                      style={styles.myStoryPlus}
+                      onPress={() => navigation.navigate('CreatePost', { initialType: 'story' })}
+                      activeOpacity={0.8}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons name="add" size={14} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
                   <Text style={styles.storyUsername} numberOfLines={1}>
                     Your story
                   </Text>
-                </TouchableOpacity>
+                </View>
 
-                {/* Friend Stories with gradient rings */}
-                {stories.map((story) => (
-                  <TouchableOpacity
-                    key={story._id}
-                    style={styles.storyItem}
-                    onPress={() => setSelectedStory(story)}
-                    activeOpacity={0.8}
-                  >
-                    <Avatar
-                      uri={story.user?.avatar}
-                      name={story.user?.user_name || 'User'}
-                      size={68}
-                      showStoryRing={true}
-                    />
-                    <Text style={styles.storyUsername} numberOfLines={1}>
-                      {story.user?.user_name || 'friend'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {/* Real other users' stories from DB */}
+                {otherUsersList.map((userStoryGroup) => {
+                  const firstStory = userStoryGroup[0];
+                  const author = firstStory.user;
+                  return (
+                    <TouchableOpacity
+                      key={firstStory._id}
+                      style={styles.storyItem}
+                      onPress={() => handleOpenUserStories(userStoryGroup)}
+                      activeOpacity={0.8}
+                    >
+                      <Avatar
+                        uri={author?.avatar}
+                        name={author?.user_name || 'User'}
+                        size={68}
+                        showStoryRing={true}
+                      />
+                      <Text style={styles.storyUsername} numberOfLines={1}>
+                        {author?.user_name || 'friend'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
+            </View>
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyFeedBox}>
+              <Ionicons name="images-outline" size={56} color="#333333" />
+              <Text style={styles.emptyFeedTitle}>Welcome to FOMO</Text>
+              <Text style={styles.emptyFeedSubtitle}>
+                Your feed is currently empty. Be the first to share a post or story!
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyCreateBtn}
+                onPress={() => navigation.navigate('CreatePost')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add-circle" size={18} color="#FFFFFF" />
+                <Text style={styles.emptyCreateBtnText}>Create First Post</Text>
+              </TouchableOpacity>
             </View>
           }
           refreshControl={
@@ -266,13 +262,14 @@ export const HomeScreen = ({ navigation }) => {
         />
       )}
 
-      {/* 3. Story Viewer Lightbox Modal */}
+      {/* 3. Story Viewer Lightbox Modal with Next/Previous navigation */}
       <StoryViewerModal
-        visible={Boolean(selectedStory)}
-        story={selectedStory}
-        onClose={() => setSelectedStory(null)}
+        visible={activeStoryList.length > 0}
+        stories={activeStoryList}
+        initialIndex={activeStoryIndex}
+        onClose={() => setActiveStoryList([])}
         onReply={(text) => {
-          Alert.alert('Story Reply Sent', `Sent "${text}" to ${selectedStory?.user?.user_name}`);
+          Alert.alert('Story Reply Sent', `Sent "${text}"`);
         }}
       />
 
@@ -281,17 +278,7 @@ export const HomeScreen = ({ navigation }) => {
         visible={Boolean(commentPost)}
         postId={commentPost?._id}
         initialComments={commentPost?.comments || []}
-        currentUser={user}
         onClose={() => setCommentPost(null)}
-        onCommentAdded={(updatedComments) => {
-          setPosts((prev) =>
-            prev.map((p) =>
-              p._id === commentPost._id
-                ? { ...p, comments: updatedComments, commentsCount: updatedComments.length }
-                : p
-            )
-          );
-        }}
       />
     </SafeAreaView>
   );
@@ -303,52 +290,62 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   topBar: {
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
     backgroundColor: '#000000',
     borderBottomWidth: 0.5,
-    borderBottomColor: '#1A1A1A',
+    borderBottomColor: '#121212',
   },
   topIconBtn: {
     padding: 4,
-    position: 'relative',
   },
-  logoText: {
-    color: '#FFFFFF',
-    fontSize: 24,
+  brandTitle: {
+    fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.8,
-    fontFamily: Platform.OS === 'ios' ? 'Snell Roundhand' : undefined,
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'HelveticaNeue-Bold' : 'sans-serif-medium',
   },
-  topRightActions: {
+  topBarRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
   },
-  notificationBadge: {
+  unreadBadgeDot: {
     position: 'absolute',
-    top: 4,
-    right: 4,
+    top: -1,
+    right: -2,
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#ED4956',
+    backgroundColor: '#FF2D55',
+    borderWidth: 1.5,
+    borderColor: '#000000',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  feedContent: {
+    paddingBottom: 24,
   },
   storiesContainer: {
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#1A1A1A',
     paddingVertical: 10,
-    marginBottom: 4,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#181818',
+    backgroundColor: '#000000',
   },
   storiesScroll: {
-    paddingHorizontal: 14,
-    gap: 14,
+    paddingHorizontal: 12,
+    alignItems: 'center',
   },
   storyItem: {
     alignItems: 'center',
+    marginHorizontal: 7,
     width: 72,
   },
   myStoryWrapper: {
@@ -356,30 +353,55 @@ const styles = StyleSheet.create({
   },
   myStoryPlus: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#0095F6',
-    borderRadius: 10,
-    width: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
     borderWidth: 2,
     borderColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   storyUsername: {
     color: '#FFFFFF',
     fontSize: 11.5,
-    fontWeight: '500',
-    marginTop: 6,
+    marginTop: 5,
     textAlign: 'center',
+    maxWidth: 70,
   },
-  centerLoader: {
-    flex: 1,
-    justifyContent: 'center',
+  emptyFeedBox: {
+    paddingTop: 80,
     alignItems: 'center',
+    paddingHorizontal: 32,
   },
-  feedContent: {
-    paddingBottom: 24,
+  emptyFeedTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 16,
+  },
+  emptyFeedSubtitle: {
+    color: '#737373',
+    fontSize: 13.5,
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 19,
+  },
+  emptyCreateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#0095F6',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  emptyCreateBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
