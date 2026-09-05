@@ -114,27 +114,33 @@ export const PostCard = ({
         </TouchableOpacity>
       </View>
 
-      {/* 2. Media Image with Double-Tap to Like */}
-      <TouchableOpacity
-        activeOpacity={1}
-        onPress={handleDoubleTap}
-        style={styles.imageContainer}
-      >
+      {/* 2. Media Image / Video with Double-Tap to Like */}
+      <View style={styles.imageContainer}>
         {post.mediaType === 'video' || post.isReel || (post.mediaUrl && post.mediaUrl.match(/\.(mp4|mov|webm|mkv)/i)) ? (
           <FeedVideoPlayer
             sourceUrl={post.mediaUrl}
             style={styles.postImage}
+            mode="feed"
+            showMuteButton={true}
+            onDoubleTap={handleDoubleTap}
           />
         ) : (
-          <Image
-            source={{ uri: post.mediaUrl }}
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={handleDoubleTap}
             style={styles.postImage}
-            resizeMode="cover"
-          />
+          >
+            <Image
+              source={{ uri: post.mediaUrl }}
+              style={styles.postImage}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
         )}
 
         {/* Bursting Heart Animation on Double Tap */}
         <Animated.View
+          pointerEvents="none"
           style={[
             styles.burstHeartOverlay,
             {
@@ -145,7 +151,7 @@ export const PostCard = ({
         >
           <Ionicons name="heart" size={100} color="#ED4956" />
         </Animated.View>
-      </TouchableOpacity>
+      </View>
 
       {/* 3. Action Buttons Row */}
       <View style={styles.actionRow}>

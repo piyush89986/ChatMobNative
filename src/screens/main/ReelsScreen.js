@@ -16,18 +16,30 @@ import { Avatar } from '../../components/Avatar';
 import { CommentsModal } from '../../components/CommentsModal';
 import { FeedVideoPlayer } from '../../components/FeedVideoPlayer';
 import { getFeedPosts, toggleLike } from '../../api/post';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
 export const ReelsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const { user } = useAuth();
   const [reels, setReels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeCommentsPost, setActiveCommentsPost] = useState(null);
+  const [activeReelIndex, setActiveReelIndex] = useState(0);
+
+  const onViewableItemsChanged = React.useRef(({ viewableItems }) => {
+    if (viewableItems && viewableItems.length > 0) {
+      setActiveReelIndex(viewableItems[0].index ?? 0);
+    }
+  }).current;
+
+  const viewabilityConfig = React.useRef({
+    itemVisiblePercentThreshold: 80,
+  }).current;
 
   const fetchReels = useCallback(async () => {
     try {
@@ -78,10 +90,11 @@ export const ReelsScreen = ({ navigation }) => {
     }
   };
 
-  const renderReel = ({ item }) => {
+  const renderReel = ({ item, index }) => {
     const author = item.author || {};
     const likesCount = item.likesCount !== undefined ? item.likesCount : (item.likes?.length || 0);
     const commentsCount = item.commentsCount !== undefined ? item.commentsCount : (item.comments?.length || 0);
+    const isCurrentActive = isFocused && index === activeReelIndex;
 
     return (
       <View style={[styles.reelContainer, { height: height - 52 - insets.bottom }]}>
@@ -89,12 +102,15 @@ export const ReelsScreen = ({ navigation }) => {
           <FeedVideoPlayer
             sourceUrl={item.mediaUrl}
             style={styles.backgroundImage}
+            mode="reel"
+            isActive={isCurrentActive}
             showMuteButton={true}
+            onDoubleTap={() => handleToggleLike(item)}
           />
         ) : (
           <Image source={{ uri: item.mediaUrl }} style={styles.backgroundImage} resizeMode="cover" />
         )}
-        <View style={styles.dimOverlay} />
+        <View style={styles.dimOverlay} pointerEvents="none" />
 
         {/* Right Side Action Buttons */}
         <View style={[styles.rightActions, { bottom: 90 }]}>
@@ -194,6 +210,8 @@ export const ReelsScreen = ({ navigation }) => {
           snapToInterval={height - 52 - insets.bottom}
           snapToAlignment="start"
           decelerationRate="fast"
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
