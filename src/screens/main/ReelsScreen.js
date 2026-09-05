@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../components/Avatar';
 import { CommentsModal } from '../../components/CommentsModal';
 import { FeedVideoPlayer } from '../../components/FeedVideoPlayer';
+import { ShareToChatModal } from '../../components/ShareToChatModal';
 import { getFeedPosts, toggleLike } from '../../api/post';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -29,6 +30,7 @@ export const ReelsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeCommentsPost, setActiveCommentsPost] = useState(null);
+  const [shareReelItem, setShareReelItem] = useState(null);
   const [activeReelIndex, setActiveReelIndex] = useState(0);
 
   const onViewableItemsChanged = React.useRef(({ viewableItems }) => {
@@ -138,7 +140,7 @@ export const ReelsScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => navigation.navigate('DirectMessages', { sharedPost: item })}
+            onPress={() => setShareReelItem(item)}
             activeOpacity={0.7}
           >
             <Ionicons name="paper-plane-outline" size={30} color="#FFFFFF" />
@@ -248,6 +250,14 @@ export const ReelsScreen = ({ navigation }) => {
         postId={activeCommentsPost?._id}
         initialComments={activeCommentsPost?.comments || []}
         onClose={() => setActiveCommentsPost(null)}
+      />
+
+      {/* Share to Direct Message Modal */}
+      <ShareToChatModal
+        visible={Boolean(shareReelItem)}
+        item={shareReelItem}
+        itemType="reel"
+        onClose={() => setShareReelItem(null)}
       />
     </SafeAreaView>
   );

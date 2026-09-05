@@ -18,15 +18,29 @@ import { Avatar } from '../../components/Avatar';
 import { PostCard } from '../../components/PostCard';
 import { CommentsModal } from '../../components/CommentsModal';
 import { StoryViewerModal } from '../../components/StoryViewerModal';
+import { ShareToChatModal } from '../../components/ShareToChatModal';
 import { getFeedPosts, toggleLike, getStories } from '../../api/post';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 
 export const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const isFocused = useIsFocused();
   const [posts, setPosts] = useState([]);
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activePostId, setActivePostId] = useState(null);
+  const [shareItem, setShareItem] = useState(null);
+
+  const onViewableItemsChanged = React.useRef(({ viewableItems }) => {
+    if (viewableItems && viewableItems.length > 0) {
+      setActivePostId(viewableItems[0].item?._id);
+    }
+  }).current;
+
+  const viewabilityConfig = React.useRef({
+    itemVisiblePercentThreshold: 60,
+  }).current;
 
   // Active Stories for Lightbox Modal
   const [activeStoryList, setActiveStoryList] = useState([]);
@@ -163,13 +177,16 @@ export const HomeScreen = ({ navigation }) => {
         <FlatList
           data={posts}
           keyExtractor={(item) => item._id}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
           renderItem={({ item }) => (
             <PostCard
               post={item}
               currentUser={user}
+              isActive={isFocused && activePostId === item._id}
               onLikePress={handleLike}
               onCommentPress={(p) => setCommentPost(p)}
-              onSharePress={(p) => navigation.navigate('DirectMessages', { sharedPost: p })}
+              onSharePress={(p) => setShareItem(p)}
               onUserPress={(author) => navigation.navigate('Profile', { targetUser: author })}
             />
           )}
@@ -199,43 +216,47 @@ export const HomeScreen = ({ navigation }) => {
                       activeOpacity={0.8}
                       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                     >
-                      <Ionicons name="add" size={14} color="#FFFFFF" />
+                      <Ionicons name="add" size={16} color="#FFFFFF" />
                     </TouchableOpacity>
                   </TouchableOpacity>
                   <Text style={styles.storyUsername} numberOfLines={1}>
-                    Your story
+                    Your Story
                   </Text>
                 </View>
 
-                {/* Real other users' stories from DB */}
-                {otherUsersList.map((userStoryGroup) => {
-                  const firstStory = userStoryGroup[0];
-                  const author = firstStory.user;
+                {/* Other Users' Grouped Active Stories */}
+                {Object.keys(groupedStories).map((userId) => {
+                  const userStories = groupedStories[userId];
+                  const firstStory = userStories[0];
+                  const author = firstStory?.user || {};
+
                   return (
-                    <TouchableOpacity
-                      key={firstStory._id}
-                      style={styles.storyItem}
-                      onPress={() => handleOpenUserStories(userStoryGroup)}
-                      activeOpacity={0.8}
-                    >
-                      <Avatar
-                        uri={author?.avatar}
-                        name={author?.user_name || 'User'}
-                        size={68}
-                        showStoryRing={true}
-                      />
+                    <View key={userId} style={styles.storyItem}>
+                      <TouchableOpacity
+                        onPress={() => handleOpenUserStories(userStories)}
+                        activeOpacity={0.8}
+                      >
+                        <Avatar
+                          uri={author.avatar}
+                          name={author.user_name}
+                          size={68}
+                          showStoryRing={true}
+                        />
+                      </TouchableOpacity>
                       <Text style={styles.storyUsername} numberOfLines={1}>
-                        {author?.user_name || 'friend'}
+                        {author.user_name || 'User'}
                       </Text>
-                    </TouchableOpacity>
+                    </View>
                   );
                 })}
               </ScrollView>
             </View>
           }
           ListEmptyComponent={
-            <View style={styles.emptyFeedBox}>
-              <Ionicons name="images-outline" size={56} color="#333333" />
+            <View style={styles.emptyFeedContainer}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="camera-outline" size={48} color="#FFFFFF" />
+              </View>
               <Text style={styles.emptyFeedTitle}>Welcome to FOMO</Text>
               <Text style={styles.emptyFeedSubtitle}>
                 Your feed is currently empty. Be the first to share a post or story!
@@ -271,6 +292,7 @@ export const HomeScreen = ({ navigation }) => {
         onReply={(text) => {
           Alert.alert('Story Reply Sent', `Sent "${text}"`);
         }}
+        onShare={(storyItem) => setShareItem(storyItem)}
       />
 
       {/* 4. Comments Bottom Sheet Modal */}
@@ -279,6 +301,14 @@ export const HomeScreen = ({ navigation }) => {
         postId={commentPost?._id}
         initialComments={commentPost?.comments || []}
         onClose={() => setCommentPost(null)}
+      />
+
+      {/* 5. Instagram-Style Direct Messenger Share Modal */}
+      <ShareToChatModal
+        visible={Boolean(shareItem)}
+        item={shareItem}
+        itemType="post"
+        onClose={() => setShareItem(null)}
       />
     </SafeAreaView>
   );

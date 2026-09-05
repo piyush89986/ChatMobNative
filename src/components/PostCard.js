@@ -18,6 +18,7 @@ const { width } = Dimensions.get('window');
 export const PostCard = ({
   post,
   currentUser,
+  isActive = true,
   onLikePress,
   onCommentPress,
   onSharePress,
@@ -121,6 +122,7 @@ export const PostCard = ({
             sourceUrl={post.mediaUrl}
             style={styles.postImage}
             mode="feed"
+            isActive={isActive}
             showMuteButton={true}
             onDoubleTap={handleDoubleTap}
           />

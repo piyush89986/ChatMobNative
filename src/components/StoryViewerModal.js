@@ -25,6 +25,7 @@ export const StoryViewerModal = ({
   initialIndex = 0,
   onClose,
   onReply,
+  onShare,
 }) => {
   const insets = useSafeAreaInsets();
   const storyList = stories && stories.length > 0 ? stories : (story ? [story] : []);
@@ -174,9 +175,13 @@ export const StoryViewerModal = ({
           <TouchableOpacity
             style={styles.sendBtn}
             onPress={() => {
-              if (replyText.trim() && onReply) onReply(replyText.trim());
-              setReplyText('');
-              handleNext();
+              if (replyText.trim()) {
+                if (onReply) onReply(replyText.trim());
+                setReplyText('');
+                handleNext();
+              } else if (onShare) {
+                onShare(currentStory);
+              }
             }}
           >
             <Ionicons name="paper-plane-outline" size={26} color="#FFFFFF" />
