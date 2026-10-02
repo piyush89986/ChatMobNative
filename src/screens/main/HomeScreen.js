@@ -21,9 +21,11 @@ import { StoryViewerModal } from '../../components/StoryViewerModal';
 import { ShareToChatModal } from '../../components/ShareToChatModal';
 import { getFeedPosts, toggleLike, getStories } from '../../api/post';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useAppMode } from '../../context/AppModeContext';
 
 export const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const { switchToMusic } = useAppMode();
   const isFocused = useIsFocused();
   const [posts, setPosts] = useState([]);
   const [stories, setStories] = useState([]);
@@ -146,8 +148,16 @@ export const HomeScreen = ({ navigation }) => {
         {/* FOMO Brand Title */}
         <Text style={styles.brandTitle}>FOMO</Text>
 
-        {/* Right Top Actions (Heart + Messenger) */}
+        {/* Right Top Actions (Music Switcher + Heart + Messenger) */}
         <View style={styles.topBarRight}>
+          <TouchableOpacity
+            style={styles.topIconBtn}
+            onPress={switchToMusic}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="musical-notes" size={24} color="#1DB954" />
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.topIconBtn}
             onPress={() => navigation.navigate('Notifications')}
