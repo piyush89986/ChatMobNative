@@ -18,14 +18,20 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       try {
         let savedUrl = await storage.getServerUrl();
-        // If saved URL is an old local development IP/host, migrate to DEFAULT_HOST
-        if (
+        // If saved URL is missing, or is a local development IP/host, migrate to DEFAULT_HOST (Render)
+        const isLocalOrInvalid =
           !savedUrl ||
           savedUrl.includes('localhost') ||
-          savedUrl.includes('10.41.') ||
+          savedUrl.includes('10.') ||
+          savedUrl.includes('192.168.') ||
+          savedUrl.includes('172.') ||
           savedUrl.includes('10.0.2.2') ||
-          savedUrl.includes('127.0.0.1')
-        ) {
+          savedUrl.includes('127.0.0.1') ||
+          savedUrl.includes(':4100') ||
+          savedUrl.includes(':4000') ||
+          !savedUrl.startsWith('https://');
+
+        if (!__DEV__ && isLocalOrInvalid) {
           savedUrl = DEFAULT_HOST;
           await storage.setServerUrl(DEFAULT_HOST);
         }

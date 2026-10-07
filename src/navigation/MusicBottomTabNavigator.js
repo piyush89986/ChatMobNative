@@ -1,25 +1,20 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MusicHomeScreen } from '../screens/music/MusicHomeScreen';
 import { MusicSearchScreen } from '../screens/music/MusicSearchScreen';
 import { MusicLibraryScreen } from '../screens/music/MusicLibraryScreen';
+import { UploadMusicScreen } from '../screens/music/UploadMusicScreen';
 import { MiniPlayerBar } from '../components/music/MiniPlayerBar';
 import { FullPlayerModal } from '../components/music/FullPlayerModal';
-import { CreatePlaylistModal } from '../components/music/CreatePlaylistModal';
-import { useAppMode } from '../context/AppModeContext';
 
 const Tab = createBottomTabNavigator();
 
-// Placeholder screens for tab actions
-const DummyScreen = () => <View style={{ flex: 1, backgroundColor: '#080E1E' }} />;
-
 export const MusicBottomTabNavigator = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { switchToSocial } = useAppMode();
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [currentTab, setCurrentTab] = useState('Home');
 
   const bottomInset = insets.bottom > 0 ? insets.bottom : 8;
   const tabBarHeight = 52 + bottomInset;
@@ -27,6 +22,15 @@ export const MusicBottomTabNavigator = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Tab.Navigator
+        screenListeners={{
+          state: (e) => {
+            const state = e.data.state;
+            if (state && state.routes && state.index !== undefined) {
+              const routeName = state.routes[state.index]?.name;
+              if (routeName) setCurrentTab(routeName);
+            }
+          },
+        }}
         screenOptions={{
           headerShown: false,
           sceneContainerStyle: { backgroundColor: '#080E1E' },
@@ -42,7 +46,7 @@ export const MusicBottomTabNavigator = ({ navigation }) => {
           tabBarLabelStyle: styles.tabLabel,
         }}
       >
-        {/* 1. Home matching Screenshot */}
+        {/* 1. Home - Resso Style Vertical Reels Feed */}
         <Tab.Screen
           name="Home"
           component={MusicHomeScreen}
@@ -50,7 +54,7 @@ export const MusicBottomTabNavigator = ({ navigation }) => {
             tabBarLabel: 'Home',
             tabBarIcon: ({ focused, color }) => (
               <Ionicons
-                name={focused ? 'home' : 'home-outline'}
+                name={focused ? 'musical-notes' : 'musical-notes-outline'}
                 size={22}
                 color={color}
               />
@@ -58,7 +62,7 @@ export const MusicBottomTabNavigator = ({ navigation }) => {
           }}
         />
 
-        {/* 2. Search matching Screenshot */}
+        {/* 2. Search */}
         <Tab.Screen
           name="Search"
           component={MusicSearchScreen}
@@ -74,7 +78,7 @@ export const MusicBottomTabNavigator = ({ navigation }) => {
           }}
         />
 
-        {/* 3. Your Library matching Screenshot */}
+        {/* 3. Your Library */}
         <Tab.Screen
           name="YourLibrary"
           component={MusicLibraryScreen}
@@ -90,64 +94,37 @@ export const MusicBottomTabNavigator = ({ navigation }) => {
           }}
         />
 
-        {/* 4. Premium / FOMO Social matching Screenshot */}
+        {/* 4. Upload Your Fav Music */}
         <Tab.Screen
-          name="Premium"
-          component={DummyScreen}
-          listeners={{
-            tabPress: (e) => {
-              e.preventDefault();
-              switchToSocial();
-            },
-          }}
+          name="UploadMusic"
+          component={UploadMusicScreen}
           options={{
-            tabBarLabel: 'Premium',
-            tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons name="spotify" size={24} color={color} />
-            ),
-          }}
-        />
-
-        {/* 5. Create matching Screenshot */}
-        <Tab.Screen
-          name="Create"
-          component={DummyScreen}
-          listeners={{
-            tabPress: (e) => {
-              e.preventDefault();
-              setIsCreateOpen(true);
-            },
-          }}
-          options={{
-            tabBarLabel: 'Create',
-            tabBarIcon: ({ color }) => (
-              <Ionicons name="add" size={26} color={color} />
+            tabBarLabel: 'Upload',
+            tabBarIcon: ({ focused, color }) => (
+              <Ionicons
+                name={focused ? 'cloud-upload' : 'cloud-upload-outline'}
+                size={22}
+                color={color}
+              />
             ),
           }}
         />
       </Tab.Navigator>
 
-      {/* Persistent Mini-Player Bar across all music tabs */}
-      <View
-        style={[
-          styles.miniPlayerWrapper,
-          { bottom: tabBarHeight },
-        ]}
-      >
-        <MiniPlayerBar />
-      </View>
+      {/* Mini-Player only on Search, Library & Upload tabs (Home is full-screen Resso reel) */}
+      {currentTab !== 'Home' && (
+        <View
+          style={[
+            styles.miniPlayerWrapper,
+            { bottom: tabBarHeight },
+          ]}
+        >
+          <MiniPlayerBar />
+        </View>
+      )}
 
       {/* Global Full Player Modal */}
       <FullPlayerModal />
-
-      {/* Create Playlist Modal for the 'Create' tab */}
-      <CreatePlaylistModal
-        visible={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onCreated={(pl) => {
-          navigation.navigate('PlaylistDetail', { playlistId: pl._id, title: pl.name });
-        }}
-      />
     </View>
   );
 };

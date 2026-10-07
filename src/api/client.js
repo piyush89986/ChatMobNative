@@ -23,7 +23,21 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     const savedUrl = await storage.getServerUrl();
-    const activeUrl = savedUrl || cachedBaseUrl || DEFAULT_HOST;
+    let activeUrl = savedUrl || cachedBaseUrl || DEFAULT_HOST;
+    if (!__DEV__) {
+      if (
+        !activeUrl ||
+        activeUrl.includes('localhost') ||
+        activeUrl.includes('10.') ||
+        activeUrl.includes('192.168.') ||
+        activeUrl.includes('172.') ||
+        activeUrl.includes(':4100') ||
+        activeUrl.includes(':4000') ||
+        !activeUrl.startsWith('https://')
+      ) {
+        activeUrl = DEFAULT_HOST;
+      }
+    }
     config.baseURL = activeUrl.replace(/\/$/, '');
 
     const token = await storage.getToken();
@@ -52,7 +66,8 @@ apiClient.interceptors.response.use(
       if (error.response.data && error.response.data.message) {
         message = error.response.data.message;
       } else if (typeof error.response.data === 'string') {
-        message = error.response.data;
+        const cleanStr = error.response.data.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
+        message = cleanStr.length > 150 ? `${cleanStr.slice(0, 150)}...` : cleanStr;
       } else {
         message = `Server error (${error.response.status})`;
       }

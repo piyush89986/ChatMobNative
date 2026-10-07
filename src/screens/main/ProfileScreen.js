@@ -16,7 +16,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { Avatar } from '../../components/Avatar';
 import { CustomInput } from '../../components/CustomInput';
-import { ServerConfigModal } from '../../components/ServerConfigModal';
 import { updateProfile, uploadAvatar } from '../../api/user';
 import { getUserPosts } from '../../api/post';
 import * as ImagePicker from 'expo-image-picker';
@@ -36,7 +35,6 @@ export const ProfileScreen = ({ navigation, route }) => {
   const [bio, setBio] = useState(user?.bio || '');
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [showServerModal, setShowServerModal] = useState(false);
 
   // Tab: 'grid' | 'reels' | 'reposts' | 'tagged'
   const [activeTab, setActiveTab] = useState('grid');
@@ -166,12 +164,6 @@ export const ProfileScreen = ({ navigation, route }) => {
             onPress={() => {}}
           >
             <Ionicons name="at-outline" size={25} color="#FFFFFF" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIconBtn}
-            onPress={() => setShowServerModal(true)}
-          >
-            <Ionicons name="menu-outline" size={28} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -380,9 +372,6 @@ export const ProfileScreen = ({ navigation, route }) => {
           <Text style={styles.logoutText}>Log Out of FOMO</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      {/* Backend Settings Modal */}
-      <ServerConfigModal visible={showServerModal} onClose={() => setShowServerModal(false)} />
     </SafeAreaView>
   );
 };

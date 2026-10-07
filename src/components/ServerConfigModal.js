@@ -21,7 +21,8 @@ export const ServerConfigModal = ({ visible, onClose }) => {
   const [statusType, setStatusType] = useState('none'); // 'success' | 'error' | 'none'
 
   const presets = [
-    { label: 'Wi-Fi IP (Phone)', url: 'http://10.41.37.233:4100' },
+    { label: 'Cloud Server (Render)', url: 'https://mobailchatappbackend.onrender.com' },
+    { label: 'Wi-Fi IP (Phone)', url: 'http://10.70.145.97:4100' },
     { label: 'Android Emulator', url: 'http://10.0.2.2:4100' },
     { label: 'Localhost', url: 'http://localhost:4100' },
   ];
@@ -107,7 +108,7 @@ export const ServerConfigModal = ({ visible, onClose }) => {
             <TextInput
               value={customUrl}
               onChangeText={setCustomUrl}
-              placeholder="http://10.41.37.233:4000"
+              placeholder="http://10.70.145.97:4100"
               placeholderTextColor={COLORS.textMuted}
               style={styles.input}
               autoCapitalize="none"

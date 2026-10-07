@@ -4,6 +4,12 @@ export const fetchHomeMusic = async () => {
   return await apiClient.get('/music/home');
 };
 
+export const fetchCollectionSongs = async (query = '', title = '') => {
+  return await apiClient.get('/music/collection-songs', {
+    params: { query, title },
+  });
+};
+
 export const searchMusic = async (query = '', genre = '') => {
   return await apiClient.get('/music/search', {
     params: { q: query, genre },
@@ -48,4 +54,10 @@ export const toggleFollowArtist = async (id) => {
 
 export const fetchUserLibrary = async () => {
   return await apiClient.get('/music/library');
+};
+
+export const uploadCustomSongApi = async (formData) => {
+  return await apiClient.post('/music/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
 };

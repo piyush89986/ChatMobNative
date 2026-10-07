@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { fetchPlaylistDetails, removeSongFromPlaylist } from '../../api/music';
+import { fetchPlaylistDetails, removeSongFromPlaylist, fetchCollectionSongs } from '../../api/music';
 import { SongRowItem } from '../../components/music/SongRowItem';
 import { useMusicPlayer } from '../../context/MusicPlayerContext';
 import { useAuth } from '../../context/AuthContext';
@@ -22,7 +22,7 @@ const { width } = Dimensions.get('window');
 const ARTWORK_SIZE = width * 0.62;
 
 export const PlaylistDetailScreen = ({ route, navigation }) => {
-  const { playlistId, title } = route.params || {};
+  const { playlistId, title, albumSearch, coverUrl, artist } = route.params || {};
   const { user } = useAuth();
   const { playSong, toggleShuffle, isShuffle } = useMusicPlayer();
 
@@ -32,10 +32,28 @@ export const PlaylistDetailScreen = ({ route, navigation }) => {
 
   const loadDetails = async () => {
     try {
-      const data = await fetchPlaylistDetails(playlistId);
-      if (data && data.playlist) {
-        setPlaylist(data.playlist);
-        setDurationText(data.durationFormatted || '');
+      if (albumSearch) {
+        const data = await fetchCollectionSongs(albumSearch, title);
+        if (data && data.songs) {
+          setPlaylist({
+            name: title || 'Album',
+            songs: data.songs,
+            coverUrl: coverUrl || data.songs[0]?.coverUrl,
+            creator: { user_name: artist || 'Official Album' },
+          });
+          const totalSecs = data.songs.reduce((acc, s) => acc + (s.duration || 180), 0);
+          const mins = Math.floor(totalSecs / 60);
+          setDurationText(`${data.songs.length} songs • ${mins} min`);
+        }
+        return;
+      }
+
+      if (playlistId) {
+        const data = await fetchPlaylistDetails(playlistId);
+        if (data && data.playlist) {
+          setPlaylist(data.playlist);
+          setDurationText(data.durationFormatted || '');
+        }
       }
     } catch (e) {
       console.log('Error loading playlist details:', e);

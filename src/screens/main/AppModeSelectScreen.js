@@ -7,6 +7,7 @@ import {
   ScrollView,
   Dimensions,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -112,6 +113,46 @@ export const AppModeSelectScreen = () => {
               </View>
             </LinearGradient>
           </TouchableOpacity>
+
+          {/* Option 3: FOMO Entertainment (Coming Soon) */}
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => {
+              Alert.alert(
+                'Coming Soon 🍿',
+                'FOMO Entertainment is currently under development. Stay tuned for movies, web shows, gaming & exciting content!'
+              );
+            }}
+            style={styles.cardTouch}
+          >
+            <LinearGradient
+              colors={['#D97706', '#92400E', '#1C1004']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cardGradient}
+            >
+              <View style={styles.cardHeader}>
+                <View style={styles.entIconBadge}>
+                  <Ionicons name="film" size={24} color="#FBBF24" />
+                </View>
+                <View style={[styles.badgePill, styles.comingSoonPill]}>
+                  <Text style={styles.comingSoonBadgeText}>COMING SOON</Text>
+                </View>
+              </View>
+
+              <View style={styles.cardBody}>
+                <Text style={styles.cardTitle}>FOMO Entertainment</Text>
+                <Text style={styles.cardDesc}>
+                  Stream movies, web series, live shows, gaming & exciting entertainment.
+                </Text>
+              </View>
+
+              <View style={styles.cardFooter}>
+                <Text style={styles.ctaTextAmber}>Coming Soon 🎬</Text>
+                <Ionicons name="sparkles" size={20} color="#FBBF24" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
 
         {/* Remember choice toggle */}
@@ -125,6 +166,14 @@ export const AppModeSelectScreen = () => {
           </View>
           <Text style={styles.rememberText}>Remember my preference for next time</Text>
         </TouchableOpacity>
+
+        {/* Creator / Developer Credit */}
+        <View style={styles.developerCreditContainer}>
+          <Text style={styles.developerCreditText}>
+            Designed & Developed by{' '}
+            <Text style={styles.developerName}>Piyush Singh Tanwar</Text>
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -242,6 +291,30 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
   },
+  entIconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(251, 191, 36, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  comingSoonPill: {
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.4)',
+  },
+  comingSoonBadgeText: {
+    color: '#FBBF24',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  ctaTextAmber: {
+    color: '#FDE68A',
+    fontWeight: '700',
+    fontSize: 14,
+  },
   rememberRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -265,5 +338,22 @@ const styles = StyleSheet.create({
   rememberText: {
     color: '#B3B3B3',
     fontSize: 12,
+  },
+  developerCreditContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 10,
+    paddingBottom: 16,
+  },
+  developerCreditText: {
+    color: 'rgba(255, 255, 255, 0.45)',
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.5,
+  },
+  developerName: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });
