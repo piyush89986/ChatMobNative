@@ -54,8 +54,15 @@ export const AuthProvider = ({ children }) => {
             }
           } catch (err) {
             console.log('Session verification warning:', err.message);
-            // If invalid token, clear
-            if (err.message && (err.message.includes('401') || err.message.includes('Unauthrized'))) {
+            // If invalid or expired token, clear storage and show login
+            const isAuthError =
+              err.message &&
+              (err.message.includes('401') ||
+                err.message.includes('403') ||
+                err.message.includes('Unauthrized') ||
+                err.message.includes('expired') ||
+                err.message.includes('Invalid'));
+            if (isAuthError) {
               await storage.clearAll();
               setToken(null);
               setUser(null);
